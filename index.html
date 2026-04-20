@@ -203,6 +203,7 @@
       email: 'crew-email',
       weekDeductions: 'crew-week-deductions',
       weekExtras: 'crew-week-extras',
+      pendingCloudPush: 'fortify-pending-cloud-push',
     };
 
     function getWeekDeduction(weekKey, empId) {
@@ -275,6 +276,45 @@
       state.weekExtras = payload.weekExtras && typeof payload.weekExtras === 'object' ? payload.weekExtras : {};
     }
 
+    /** Evita sobrescrever o telemóvel com snapshot antigo do servidor (ex.: POST falhou / Netlify pausado). */
+    function localLooksAheadOfServer(localPayload, serverPayload) {
+      localPayload = localPayload || {};
+      serverPayload = serverPayload || {};
+      var le = Array.isArray(localPayload.employees) ? localPayload.employees.length : 0;
+      var se = Array.isArray(serverPayload.employees) ? serverPayload.employees.length : 0;
+      if (le > se) return true;
+      var ls = Array.isArray(localPayload.sites) ? localPayload.sites.length : 0;
+      var ss = Array.isArray(serverPayload.sites) ? serverPayload.sites.length : 0;
+      if (ls > ss) return true;
+      var lent = Array.isArray(localPayload.entries) ? localPayload.entries.length : 0;
+      var sent = Array.isArray(serverPayload.entries) ? serverPayload.entries.length : 0;
+      if (lent > sent) return true;
+      try {
+        var pack = function (p) {
+          return JSON.stringify({
+            employees: p.employees || [],
+            sites: p.sites || [],
+            entries: p.entries || [],
+            weekDeductions: p.weekDeductions || {},
+            weekExtras: p.weekExtras || {},
+            reportEmail: p.reportEmail || '',
+          });
+        };
+        var lj = pack(localPayload);
+        var sj = pack(serverPayload);
+        if (lj.length > sj.length + 12) return true;
+      } catch (e) {}
+      return false;
+    }
+
+    /** Há alterações locais que ainda não foram confirmadas no servidor (sobrevive a F5). */
+    function shouldKeepLocalDataOverServer(serverPayload) {
+      try {
+        if (localStorage.getItem(STORAGE_KEYS.pendingCloudPush) === '1') return true;
+      } catch (e) {}
+      return localLooksAheadOfServer(getLocalSnapshot(), serverPayload);
+    }
+
     function persistLocalFromState() {
       try {
         localStorage.setItem(STORAGE_KEYS.employees, JSON.stringify(state.employees));
@@ -314,6 +354,9 @@
       state.cloudConnected = false;
       state.cloudRev = Number(localStorage.getItem('fortifyCloudRev') || '0') || 0;
       state.cloudLastSyncAt = localStorage.getItem('fortifyCloudLastSyncAt') || '';
+      try {
+        if (localStorage.getItem(STORAGE_KEYS.pendingCloudPush) === '1') cloudNeedsPush = true;
+      } catch (e) {}
       render();
       if (state.cloudOrg && sessionStorage.getItem('fortifyCloudPasscode')) {
         cloudConnect(state.cloudOrg, sessionStorage.getItem('fortifyCloudPasscode'));
@@ -325,7 +368,7 @@
       try {
         localStorage.setItem(key, typeof data === 'string' ? data : JSON.stringify(data));
       } catch (e) { console.error(e); }
-      if (state.cloudConnected) cloudNeedsPush = true;
+      if (state.cloudConnected) markPendingCloudPush();
       queueCloudPush();
     }
 
@@ -370,6 +413,20 @@
     let cloudLastSoftPushWarn = 0;
     /** True após save com cloud ligado; só volta a false quando um POST tiver sucesso e não houver outro push pendente no timer. */
     let cloudNeedsPush = false;
+
+    function markPendingCloudPush() {
+      cloudNeedsPush = true;
+      try {
+        localStorage.setItem(STORAGE_KEYS.pendingCloudPush, '1');
+      } catch (e) {}
+    }
+
+    function clearPendingCloudPushFlag() {
+      cloudNeedsPush = false;
+      try {
+        localStorage.removeItem(STORAGE_KEYS.pendingCloudPush);
+      } catch (e) {}
+    }
 
     function queueCloudPush() {
       if (!state.cloudConnected) return;
@@ -429,12 +486,12 @@
           clearTimeout(cloudRetryTimer);
           cloudRetryTimer = null;
         }
-        if (!cloudPushTimer) cloudNeedsPush = false;
+        if (!cloudPushTimer) clearPendingCloudPushFlag();
       } catch (e) {
         console.error(e);
         var st = cloudHttpStatus(e);
         if (st === 401) {
-          cloudNeedsPush = false;
+          clearPendingCloudPushFlag();
           showMsg('Senha ou org incorretos.');
           state.cloudConnected = false;
           clearCloudSyncUiListeners();
@@ -486,6 +543,12 @@
         }
         const snap = await cloudFetchSnapshot(org, pass);
         if (snap && snap.payload) {
+          if (shouldKeepLocalDataOverServer(snap.payload)) {
+            markPendingCloudPush();
+            queueCloudPush();
+            render();
+            return;
+          }
           applySnapshot(snap.payload);
           persistLocalFromState();
           state.cloudRev = Number(snap.rev || 0) || 0;
@@ -497,7 +560,7 @@
         console.error(e);
         var pst = cloudHttpStatus(e);
         if (pst === 401) {
-          cloudNeedsPush = false;
+          clearPendingCloudPushFlag();
           state.cloudConnected = false;
           sessionStorage.removeItem('fortifyCloudPasscode');
           clearCloudSyncUiListeners();
@@ -520,12 +583,22 @@
       try {
         const snap = await cloudFetchSnapshot(org, passcode);
         if (snap && snap.payload) {
-          applySnapshot(snap.payload);
-          persistLocalFromState();
-          state.cloudRev = Number(snap.rev || 0) || 0;
-          localStorage.setItem('fortifyCloudRev', String(state.cloudRev));
-          state.cloudLastSyncAt = snap.updatedAt || new Date().toISOString();
-          localStorage.setItem('fortifyCloudLastSyncAt', state.cloudLastSyncAt);
+          if (shouldKeepLocalDataOverServer(snap.payload)) {
+            markPendingCloudPush();
+            queueCloudPush();
+            state.cloudRev = Number(snap.rev || 0) || 0;
+            localStorage.setItem('fortifyCloudRev', String(state.cloudRev));
+            state.cloudLastSyncAt = snap.updatedAt || new Date().toISOString();
+            localStorage.setItem('fortifyCloudLastSyncAt', state.cloudLastSyncAt);
+          } else {
+            applySnapshot(snap.payload);
+            persistLocalFromState();
+            state.cloudRev = Number(snap.rev || 0) || 0;
+            localStorage.setItem('fortifyCloudRev', String(state.cloudRev));
+            state.cloudLastSyncAt = snap.updatedAt || new Date().toISOString();
+            localStorage.setItem('fortifyCloudLastSyncAt', state.cloudLastSyncAt);
+            clearPendingCloudPushFlag();
+          }
         }
         state.cloudConnected = true;
         showMsg('Cloud sync conectado');
@@ -540,7 +613,6 @@
         };
         document.addEventListener('visibilitychange', cloudOnVisible);
         window.addEventListener('focus', cloudOnFocus);
-        cloudNeedsPush = false;
       } catch (e) {
         console.error(e);
         state.cloudConnected = false;
@@ -550,7 +622,7 @@
     }
 
     function cloudDisconnect() {
-      cloudNeedsPush = false;
+      clearPendingCloudPushFlag();
       state.cloudConnected = false;
       sessionStorage.removeItem('fortifyCloudPasscode');
       if (cloudPollTimer) {
