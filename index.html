@@ -1175,18 +1175,7 @@ let msgTimer;
           '<div class="btn-row">' +
           '<button type="button" class="btn-primary" data-action="cloudConnect">' + (state.cloudConnected ? 'Reconectar' : 'Conectar') + '</button>' +
           '<button type="button" class="btn-secondary" data-action="cloudDisconnect">Desconectar</button></div>' +
-          '<p class="hint" style="margin-top:10px">Status: <strong>' + (state.cloudConnected ? 'Conectado' : 'Desconectado') + '</strong>' + (state.cloudLastSyncAt ? (' · Último sync: ' + new Date(state.cloudLastSyncAt).toLocaleString()) : '') + '</p>' +
-          '<div class="divider" style="margin:14px 0"></div>' +
-          '<div class="label">Backup manual (opcional)</div>' +
-          '<p class="hint">Se quiser, ainda dá para exportar/importar um arquivo. Mas com cloud sync ligado, normalmente não precisa.</p>' +
-          '<p class="hint"><strong>Onde os dados ficam:</strong> com <strong>Cloud sync ligado</strong>, o “oficial” fica na <strong>nuvem</strong> (Supabase) e o telemóvel mantém uma cópia local para abrir rápido. Se apagar dados do site no browser, pode perder a cópia local — reconecte e volta a puxar da nuvem.</p>' +
-          '<p class="hint"><strong>Link para a equipa:</strong> envia o endereço <strong>https</strong> deste site (o que está na barra do browser). <strong>Não</strong> uses <code>file:///…</code> — isso só funciona num computador. O foreman precisa do link + <strong>Org</strong> + <strong>senha</strong> e depois tocar em <strong>Conectar</strong>.</p>' +
-          '<p class="hint"><strong>E-mail automático semanal:</strong> ainda não existe envio automático por agendamento; na aba <strong>Pay</strong> usa <strong>Enviar relatório</strong> / <strong>Copiar relatório</strong> quando quiseres.</p>' +
-          '<p class="hint"><strong>Backup JSON:</strong> só se quiseres ficheiro extra (AirDrop/Drive). Com cloud sync, normalmente basta partilhar o link e as credenciais.</p>' +
-          '<div class="btn-row">' +
-          '<button type="button" class="btn-primary" data-action="exportBackup">Exportar backup</button>' +
-          '<button type="button" class="btn-secondary" data-action="pickImport">Importar backup</button></div>' +
-          '<input type="file" accept="application/json,.json" style="display:none" id="import-file-input" /></div>';
+          '<p class="hint" style="margin-top:10px">Status: <strong>' + (state.cloudConnected ? 'Conectado' : 'Desconectado') + '</strong>' + (state.cloudLastSyncAt ? (' · Último sync: ' + new Date(state.cloudLastSyncAt).toLocaleString()) : '') + '</p></div>';
         let empty = '';
         if (state.employees.length === 0) {
           empty = '<div class="empty-state"><div class="emoji-big">👷</div><div style="color:#888;font-size:14px">Add employees and job sites to get started</div></div>';
