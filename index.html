@@ -381,12 +381,30 @@
       }
     }
 
+    /** Evita pull com snapshot antigo apagar alterações locais ainda não enviadas (debounce 800ms). */
+    async function flushPendingCloudPush() {
+      if (!state.cloudConnected) return;
+      var hadTimer = !!cloudPushTimer;
+      if (cloudPushTimer) {
+        clearTimeout(cloudPushTimer);
+        cloudPushTimer = null;
+      }
+      var spins = 0;
+      while (cloudPushInFlight && spins < 200) {
+        await new Promise(function (r) { setTimeout(r, 25); });
+        spins++;
+      }
+      if (hadTimer) await cloudDoPush();
+    }
+
     async function cloudPull() {
       if (!state.cloudConnected) return;
       try {
         const org = state.cloudOrg;
         const pass = sessionStorage.getItem('fortifyCloudPasscode') || '';
         if (!org || !pass) return;
+        await flushPendingCloudPush();
+        if (!state.cloudConnected) return;
         const snap = await cloudFetchSnapshot(org, pass);
         if (snap && snap.payload) {
           applySnapshot(snap.payload);
