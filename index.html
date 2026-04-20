@@ -875,13 +875,13 @@ let msgTimer;
           '<div class="divider" style="margin:14px 0"></div>' +
           '<div class="label">Backup manual (opcional)</div>' +
           '<p class="hint">Se quiser, ainda dá para exportar/importar um arquivo. Mas com cloud sync ligado, normalmente não precisa.</p>' +
-          '<p class="hint"><strong>Where data saves:</strong> Only in <em>this</em> browser on <em>this</em> device (browser storage: localStorage). It survives closing the tab, but it is not on the internet and does not sync to other phones. Clear “website data” for this site and it can be erased.</p>' +
-          '<p class="hint"><strong>A link for everyone:</strong> A <code>file:///…</code> address only works on your machine. To give people a normal link, put this same HTML file online (free: go to <a href="https://app.netlify.com/drop" target="_blank" rel="noopener" style="color:#F26A21">netlify.com/drop</a>, drag the file in, get an <code>https://…</code> URL) and email that URL. Each device still keeps its own copy of entries unless you use Export / Import.</p>' +
-          '<p class="hint"><strong>Email every Saturday (hours, jobs, rates, totals):</strong> This page cannot schedule emails by itself—that needs an online app with a database and an email service (cron job). For now use <strong>Pay</strong> → Email / Copy Report each week. If you want, we can plan a small hosted version that sends that report automatically.</p>' +
-          '<p class="hint"><strong>Foreman:</strong> Export a backup file and send it (text, email, AirDrop). They open this same page and tap Import.</p>' +
+          '<p class="hint"><strong>Onde os dados ficam:</strong> com <strong>Cloud sync ligado</strong>, o “oficial” fica na <strong>nuvem</strong> (Supabase) e o telemóvel mantém uma cópia local para abrir rápido. Se apagar dados do site no browser, pode perder a cópia local — reconecte e volta a puxar da nuvem.</p>' +
+          '<p class="hint"><strong>Link para a equipa:</strong> envia o endereço <strong>https</strong> deste site (o que está na barra do browser). <strong>Não</strong> uses <code>file:///…</code> — isso só funciona num computador. O foreman precisa do link + <strong>Org</strong> + <strong>senha</strong> e depois tocar em <strong>Conectar</strong>.</p>' +
+          '<p class="hint"><strong>E-mail automático semanal:</strong> ainda não existe envio automático por agendamento; na aba <strong>Pay</strong> usa <strong>Enviar relatório</strong> / <strong>Copiar relatório</strong> quando quiseres.</p>' +
+          '<p class="hint"><strong>Backup JSON:</strong> só se quiseres ficheiro extra (AirDrop/Drive). Com cloud sync, normalmente basta partilhar o link e as credenciais.</p>' +
           '<div class="btn-row">' +
-          '<button type="button" class="btn-primary" data-action="exportBackup">Export backup</button>' +
-          '<button type="button" class="btn-secondary" data-action="pickImport">Import backup</button></div>' +
+          '<button type="button" class="btn-primary" data-action="exportBackup">Exportar backup</button>' +
+          '<button type="button" class="btn-secondary" data-action="pickImport">Importar backup</button></div>' +
           '<input type="file" accept="application/json,.json" style="display:none" id="import-file-input" /></div>';
         let empty = '';
         if (state.employees.length === 0) {
