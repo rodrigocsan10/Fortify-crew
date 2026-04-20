@@ -269,6 +269,7 @@
       lunchStartSlot: '',
       lunchEndSlot: '',
       editEntryId: '',
+      outSlotByEntryId: {},
     };
 
     function getLocalSnapshot() {
@@ -1152,13 +1153,14 @@ let msgTimer;
           activeClocks.forEach(function (entry) {
             const emp = state.employees.find(function (e) { return e.id === entry.employeeId; });
             const site = state.sites.find(function (s) { return s.id === entry.siteId; });
+            const outSlot = state.outSlotByEntryId[entry.id] || defaultSlotNow();
             working += '<div class="card-highlight active-clock-card" data-work-date="' + escapeHtml(entry.date || localDateKeyFromIso(entry.clockIn)) + '">' +
               '<div class="flex-between">' +
               '<div><div class="title-sm">' + escapeHtml(emp && emp.name) + '</div>' +
               '<div class="muted">' + escapeHtml(site && site.name) + ' · Entrada: ' + formatTime(entry.clockIn) + '</div></div></div>' +
               '<div class="muted-xs" style="margin-top:8px">Data do dia: ' + escapeHtml(entry.date || localDateKeyFromIso(entry.clockIn)) + '</div>' +
               '<div class="label" style="margin-top:10px">Hora de saída (6h–20h, 30 em 30 min)</div>' +
-              '<select class="select" data-out-slot>' + buildWorkdaySlotsHtml(defaultSlotNow()) + '</select>' +
+              '<select class="select" data-out-slot data-entry-id="' + escapeHtml(entry.id) + '">' + buildWorkdaySlotsHtml(outSlot) + '</select>' +
               '<button type="button" class="btn-primary green" data-action="clockOutCard" data-id="' + escapeHtml(entry.id) + '">Saída</button></div>';
           });
         }
@@ -1281,12 +1283,13 @@ let msgTimer;
               const emp = state.employees.find(function (e) { return e.id === entry.employeeId; });
               const site = state.sites.find(function (s) { return s.id === entry.siteId; });
               const wd = entry.date || localDateKeyFromIso(entry.clockIn);
+              const outSlot = state.outSlotByEntryId[entry.id] || defaultSlotNow();
               activeBlock += '<div class="card-highlight active-clock-card" data-work-date="' + escapeHtml(wd) + '">' +
                 '<div class="flex-between">' +
                 '<div><div style="font-weight:700">' + escapeHtml(emp && emp.name) + '</div><div class="muted-sm">' + escapeHtml(site && site.name) + ' · desde ' + formatTime(entry.clockIn) + '</div></div></div>' +
                 '<div class="muted-xs" style="margin-top:8px">Dia: ' + escapeHtml(wd) + '</div>' +
                 '<div class="label" style="margin-top:10px">Hora de saída</div>' +
-                '<select class="select" data-out-slot>' + buildWorkdaySlotsHtml(defaultSlotNow()) + '</select>' +
+                '<select class="select" data-out-slot data-entry-id="' + escapeHtml(entry.id) + '">' + buildWorkdaySlotsHtml(outSlot) + '</select>' +
                 '<button type="button" class="btn-small" style="width:100%;margin-top:8px" data-action="clockOutCard" data-id="' + escapeHtml(entry.id) + '">Saída</button></div>';
             });
           }
@@ -1495,6 +1498,14 @@ let msgTimer;
         });
       });
 
+      root.querySelectorAll('[data-out-slot]').forEach(function (el) {
+        el.addEventListener('change', function () {
+          const entryId = el.getAttribute('data-entry-id');
+          if (!entryId) return;
+          state.outSlotByEntryId[entryId] = el.value;
+        });
+      });
+
       root.querySelectorAll('[data-action]').forEach(function (el) {
         el.addEventListener('click', function () {
           const action = el.getAttribute('data-action');
@@ -1512,6 +1523,7 @@ let msgTimer;
             const card = el.closest('.active-clock-card');
             const workD = card && card.getAttribute('data-work-date');
             const slotEl = card && card.querySelector('[data-out-slot]');
+            if (slotEl && id) state.outSlotByEntryId[id] = slotEl.value;
             if (workD && slotEl && id) clockOut(id, workD, slotEl.value);
           }
           if (action === 'clockOutSelected') {
