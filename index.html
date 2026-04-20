@@ -332,7 +332,11 @@
       const res = await fetch('/.netlify/functions/sync?org=' + encodeURIComponent(org), {
         headers: { 'x-fortify-passcode': passcode },
       });
-      if (!res.ok) throw new Error('Cloud GET failed: ' + res.status);
+      if (!res.ok) {
+        const err = new Error('Cloud GET failed: ' + res.status);
+        err.status = res.status;
+        throw err;
+      }
       return await res.json();
     }
 
@@ -342,17 +346,61 @@
         headers: { 'content-type': 'application/json', 'x-fortify-passcode': passcode },
         body: JSON.stringify({ org: org, payload: payload, baseRev: state.cloudRev || 0 }),
       });
-      if (!res.ok) throw new Error('Cloud POST failed: ' + res.status);
+      if (!res.ok) {
+        const err = new Error('Cloud POST failed: ' + res.status);
+        err.status = res.status;
+        throw err;
+      }
       return await res.json();
+    }
+
+    function cloudHttpStatus(e) {
+      if (e && typeof e.status === 'number') return e.status;
+      var m = String((e && e.message) || '').match(/(\d{3})/);
+      return m ? parseInt(m[1], 10) : 0;
     }
 
     let cloudPushTimer = null;
     let cloudPushInFlight = false;
+    let cloudRetryTimer = null;
+    let cloudPullQuietTimer = null;
+    let cloudOnVisible = null;
+    let cloudOnFocus = null;
+    let cloudLastSoftPushWarn = 0;
 
     function queueCloudPush() {
       if (!state.cloudConnected) return;
       if (cloudPushTimer) clearTimeout(cloudPushTimer);
       cloudPushTimer = setTimeout(function () { cloudDoPush(); }, 800);
+    }
+
+    function scheduleCloudPushRetry() {
+      if (!state.cloudConnected) return;
+      if (cloudRetryTimer) return;
+      cloudRetryTimer = setTimeout(function () {
+        cloudRetryTimer = null;
+        if (state.cloudConnected) cloudDoPush();
+      }, 4000);
+    }
+
+    function clearCloudSyncUiListeners() {
+      if (cloudOnVisible) {
+        document.removeEventListener('visibilitychange', cloudOnVisible);
+        cloudOnVisible = null;
+      }
+      if (cloudOnFocus) {
+        window.removeEventListener('focus', cloudOnFocus);
+        cloudOnFocus = null;
+      }
+    }
+
+    function cloudPullDebounced() {
+      if (!state.cloudConnected) return;
+      if (cloudPullQuietTimer) return;
+      cloudPullQuietTimer = setTimeout(function () {
+        cloudPullQuietTimer = null;
+        cloudPull();
+      }, 2000);
     }
 
     async function cloudDoPush() {
@@ -371,10 +419,29 @@
         }
         state.cloudLastSyncAt = new Date().toISOString();
         localStorage.setItem('fortifyCloudLastSyncAt', state.cloudLastSyncAt);
+        if (cloudRetryTimer) {
+          clearTimeout(cloudRetryTimer);
+          cloudRetryTimer = null;
+        }
       } catch (e) {
         console.error(e);
-        showMsg('Cloud sync falhou (sem internet ou configuração).');
-        state.cloudConnected = false;
+        var st = cloudHttpStatus(e);
+        if (st === 401) {
+          showMsg('Senha ou org incorretos.');
+          state.cloudConnected = false;
+          clearCloudSyncUiListeners();
+          if (cloudPollTimer) {
+            clearInterval(cloudPollTimer);
+            cloudPollTimer = null;
+          }
+        } else {
+          var now = Date.now();
+          if (now - cloudLastSoftPushWarn > 20000) {
+            cloudLastSoftPushWarn = now;
+            showMsg('Sem rede por momentos; os dados ficam no telemóvel e tentamos enviar de novo.');
+          }
+          scheduleCloudPushRetry();
+        }
       } finally {
         cloudPushInFlight = false;
         render();
@@ -416,6 +483,17 @@
         }
       } catch (e) {
         console.error(e);
+        var pst = cloudHttpStatus(e);
+        if (pst === 401) {
+          state.cloudConnected = false;
+          sessionStorage.removeItem('fortifyCloudPasscode');
+          clearCloudSyncUiListeners();
+          if (cloudPollTimer) {
+            clearInterval(cloudPollTimer);
+            cloudPollTimer = null;
+          }
+          showMsg('Cloud: sessão inválida. Conecte de novo.');
+        }
       } finally {
         render();
       }
@@ -439,11 +517,16 @@
         state.cloudConnected = true;
         showMsg('Cloud sync conectado');
         if (cloudPollTimer) clearInterval(cloudPollTimer);
+        clearCloudSyncUiListeners();
         cloudPollTimer = setInterval(function () { cloudPull(); }, 8000);
-        document.addEventListener('visibilitychange', function () {
-          if (!document.hidden) cloudPull();
-        });
-        window.addEventListener('focus', function () { cloudPull(); });
+        cloudOnVisible = function () {
+          if (!document.hidden) cloudPullDebounced();
+        };
+        cloudOnFocus = function () {
+          cloudPullDebounced();
+        };
+        document.addEventListener('visibilitychange', cloudOnVisible);
+        window.addEventListener('focus', cloudOnFocus);
       } catch (e) {
         console.error(e);
         state.cloudConnected = false;
@@ -455,6 +538,19 @@
     function cloudDisconnect() {
       state.cloudConnected = false;
       sessionStorage.removeItem('fortifyCloudPasscode');
+      if (cloudPollTimer) {
+        clearInterval(cloudPollTimer);
+        cloudPollTimer = null;
+      }
+      if (cloudRetryTimer) {
+        clearTimeout(cloudRetryTimer);
+        cloudRetryTimer = null;
+      }
+      if (cloudPullQuietTimer) {
+        clearTimeout(cloudPullQuietTimer);
+        cloudPullQuietTimer = null;
+      }
+      clearCloudSyncUiListeners();
       showMsg('Cloud desconectado');
       render();
     }
