@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0A0A0A" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fortify" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>Fortify — Crew Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .app { font-family: 'Barlow', sans-serif; background: #0A0A0A; color: #F5F0EB; min-height: 100vh; max-width: 480px; margin: 0 auto; position: relative; padding-bottom: 80px; }
+    .header { background: #111; padding: 16px 20px; border-bottom: 3px solid #F26A21; display: flex; align-items: center; justify-content: space-between; }
+    .logo { font-family: 'Anton', sans-serif; font-size: 22px; color: #F26A21; letter-spacing: 2px; text-transform: uppercase; }
+    .subtitle { font-size: 11px; color: #888; letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
+    .nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #111; border-top: 2px solid #222; display: flex; z-index: 100; }
+    .nav-btn { flex: 1; padding: 12px 4px; background: transparent; border: none; color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; font-family: 'Barlow', sans-serif; font-weight: 400; }
+    .nav-btn.active { background: #1a1a1a; color: #F26A21; font-weight: 700; }
+    .page { padding: 20px; }
+    .page-title { font-family: 'Anton', sans-serif; font-size: 28px; color: #F5F0EB; margin-bottom: 4px; text-transform: uppercase; }
+    .page-subtitle { font-size: 13px; color: #888; margin-bottom: 24px; letter-spacing: 1px; }
+    .card { background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .card-highlight { background: #161616; border: 1px solid #F26A21; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .input { width: 100%; padding: 14px 16px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #F5F0EB; font-size: 16px; font-family: 'Barlow', sans-serif; outline: none; margin-bottom: 12px; }
+    .select { width: 100%; padding: 14px 16px; background: #1a1a1a; border: 1px solid #333; border-radius: 6px; color: #F5F0EB; font-size: 16px; font-family: 'Barlow', sans-serif; outline: none; margin-bottom: 12px; -webkit-appearance: none; appearance: none; }
+    .btn-primary { width: 100%; padding: 16px; background: #F26A21; border: none; border-radius: 6px; color: #fff; font-size: 16px; font-weight: 700; font-family: 'Barlow', sans-serif; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; }
+    .btn-primary.green { background: #4CAF50; }
+    .btn-secondary { width: 100%; padding: 14px; background: transparent; border: 2px solid #F26A21; border-radius: 6px; color: #F26A21; font-size: 14px; font-weight: 700; font-family: 'Barlow', sans-serif; text-transform: uppercase; letter-spacing: 2px; cursor: pointer; }
+    .btn-danger { padding: 8px 16px; background: transparent; border: 1px solid #ff4444; border-radius: 4px; color: #ff4444; font-size: 12px; cursor: pointer; font-family: 'Barlow', sans-serif; }
+    .btn-danger.tiny { margin-top: 8px; font-size: 10px; padding: 4px 8px; }
+    .btn-small { padding: 8px 16px; background: #F26A21; border: none; border-radius: 4px; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; font-family: 'Barlow', sans-serif; text-transform: uppercase; }
+    .label { display: block; font-size: 11px; color: #F26A21; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px; font-weight: 700; }
+    .label.section { margin-bottom: 12px; }
+    .label.section-mt { margin-top: 24px; margin-bottom: 12px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+    .stat { text-align: center; padding: 16px; }
+    .stat-number { font-family: 'Anton', sans-serif; font-size: 36px; color: #F26A21; }
+    .stat-number.green { color: #4CAF50; }
+    .stat-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+    .divider { height: 1px; background: #2a2a2a; margin: 16px 0; }
+    .divider.tight { margin: 12px 0; }
+    .empty-state { text-align: center; padding: 40px 20px; color: #555; }
+    .empty-state.sm { padding: 20px; font-size: 14px; color: #888; }
+    .toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #F26A21; color: #fff; padding: 12px 24px; border-radius: 6px; z-index: 200; font-size: 14px; font-weight: 700; box-shadow: 0 4px 20px rgba(242,106,33,0.4); max-width: 400px; text-align: center; }
+    .loading-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0A0A0A; color: #F26A21; font-family: 'Anton', sans-serif; font-size: 36px; }
+    .week-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .week-nav button { background: transparent; border: 1px solid #333; border-radius: 4px; color: #888; padding: 8px 12px; cursor: pointer; font-family: 'Barlow', sans-serif; }
+    .week-label { font-size: 14px; color: #F26A21; font-weight: 700; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .flex-between.start { align-items: flex-start; }
+    .text-right { text-align: right; }
+    .hours-big { font-family: 'Anton', sans-serif; font-size: 24px; color: #F26A21; }
+    .hours-pay { font-family: 'Anton', sans-serif; font-size: 22px; color: #F26A21; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .badge.green { background: #1a3a1a; color: #4CAF50; }
+    .badge.orange { background: #3a2a1a; color: #F26A21; }
+    .row-site { display: flex; justify-content: space-between; font-size: 13px; padding: 4px 0; color: #aaa; }
+    .muted { color: #888; font-size: 13px; margin-top: 4px; }
+    .muted-sm { font-size: 12px; color: #888; margin-top: 4px; }
+    .muted-xs { font-size: 12px; color: #666; margin-top: 4px; }
+    .rate { color: #F26A21; font-size: 14px; margin-top: 4px; }
+    .title-sm { font-weight: 700; font-size: 16px; }
+    .section-title { font-size: 11px; color: #F26A21; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .emoji-big { font-size: 40px; margin-bottom: 12px; }
+    .ajustes-pessoa { border: 1px solid #F26A21; border-radius: 8px; padding: 14px; margin-top: 12px; background: #141414; }
+    .ajustes-pessoa-titulo { font-size: 13px; font-weight: 700; color: #F26A21; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .hint { font-size: 12px; color: #666; margin: -8px 0 12px; line-height: 1.4; }
+    .subhead { font-size: 11px; color: #F26A21; text-transform: uppercase; letter-spacing: 2px; margin: 16px 0 8px; font-weight: 700; }
+    .active-clock-card { border-left: 3px solid #4CAF50; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .btn-row .btn-primary, .btn-row .btn-secondary { width: auto; flex: 1; min-width: 140px; }
+    button, .input, .select { -webkit-tap-highlight-color: rgba(242,106,33,0.2); }
+    .nav-btn, .btn-primary, .btn-secondary { min-height: 44px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const VIEWS = { HOME: 'home', EMPLOYEES: 'employees', CLOCK: 'clock', TIMESHEET: 'timesheet', REPORT: 'report', SITES: 'sites' };
+
+    function formatTime(d) {
+      if (!d) return '--:--';
+      return new Date(d).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    }
+    function formatDate(d) {
+      return new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+    function getWeekStart(date) {
+      const d = new Date(date || new Date());
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff);
+      d.setHours(0, 0, 0, 0);
+      return d.toISOString();
+    }
+    function getWeekEnd(weekStart) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + 6);
+      d.setHours(23, 59, 59, 999);
+      return d.toISOString();
+    }
+    function getWeekLabel(weekStart) {
+      const start = new Date(weekStart);
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' - ' +
+        end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function calcHours(clockIn, clockOut, lunchStartIso, lunchEndIso) {
+      if (!clockIn || !clockOut) return 0;
+      let ms = new Date(clockOut) - new Date(clockIn);
+      if (lunchStartIso && lunchEndIso) {
+        const ls = new Date(lunchStartIso).getTime();
+        const le = new Date(lunchEndIso).getTime();
+        if (le > ls) {
+          const ci = new Date(clockIn).getTime();
+          const co = new Date(clockOut).getTime();
+          const overlapStart = Math.max(ls, ci);
+          const overlapEnd = Math.min(le, co);
+          if (overlapEnd > overlapStart) ms -= overlapEnd - overlapStart;
+        }
+      }
+      return Math.round((ms / (1000 * 60 * 60)) * 100) / 100;
+    }
+
+    function entryWorkedHours(entry) {
+      if (!entry || !entry.clockIn || !entry.clockOut) return 0;
+      return calcHours(entry.clockIn, entry.clockOut, entry.lunchStart || null, entry.lunchEnd || null);
+    }
+    function escapeHtml(s) {
+      if (s == null) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function initWorkdaySlots() {
+      const out = [];
+      for (let mins = 6 * 60; mins <= 20 * 60; mins += 30) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        const value = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        const label = new Date(2000, 0, 1, h, m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        out.push({ value: value, label: label });
+      }
+      return out;
+    }
+    const WORKDAY_SLOTS = initWorkdaySlots();
+
+    function todayInputValue() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function defaultSlotNow() {
+      const d = new Date();
+      let mins = d.getHours() * 60 + d.getMinutes();
+      const rounded = Math.round(mins / 30) * 30;
+      const lo = 6 * 60;
+      const hi = 20 * 60;
+      const clamped = Math.max(lo, Math.min(hi, rounded));
+      const h = Math.floor(clamped / 60);
+      const m = clamped % 60;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }
+
+    function combineDateTimeLocal(dateStr, hhmm) {
+      if (!dateStr || !hhmm) return new Date().toISOString();
+      const di = dateStr.split('-').map(function (x) { return parseInt(x, 10); });
+      const ti = hhmm.split(':').map(function (x) { return parseInt(x, 10); });
+      return new Date(di[0], di[1] - 1, di[2], ti[0], ti[1], 0, 0).toISOString();
+    }
+
+    function localDateKeyFromIso(iso) {
+      const d = new Date(iso);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function buildWorkdaySlotsHtml(selectedValue, withBlank) {
+      let html = '';
+      if (withBlank) {
+        const bsel = !selectedValue ? ' selected' : '';
+        html += '<option value=""' + bsel + '>— sem pausa —</option>';
+      }
+      WORKDAY_SLOTS.forEach(function (slot) {
+        const sel = selectedValue === slot.value ? ' selected' : '';
+        html += '<option value="' + slot.value + '"' + sel + '>' + escapeHtml(slot.label) + '</option>';
+      });
+      return html;
+    }
+
+    const STORAGE_KEYS = {
+      employees: 'crew-employees',
+      sites: 'crew-sites',
+      entries: 'crew-entries',
+      email: 'crew-email',
+      weekDeductions: 'crew-week-deductions',
+      weekExtras: 'crew-week-extras',
+    };
+
+    function getWeekDeduction(weekKey, empId) {
+      const w = state.weekDeductions[weekKey];
+      if (!w || w[empId] == null) return 0;
+      return Math.round((Number(w[empId]) || 0) * 100) / 100;
+    }
+
+    function setWeekDeductionAmount(weekKey, empId, rawValue) {
+      if (!state.weekDeductions[weekKey]) state.weekDeductions[weekKey] = {};
+      const n = Math.max(0, Math.round((Number(rawValue) || 0) * 100) / 100);
+      state.weekDeductions[weekKey][empId] = n;
+      save(STORAGE_KEYS.weekDeductions, state.weekDeductions);
+    }
+
+    function getWeekExtra(weekKey, empId) {
+      const w = state.weekExtras[weekKey];
+      if (!w || w[empId] == null) return 0;
+      return Math.round((Number(w[empId]) || 0) * 100) / 100;
+    }
+
+    function setWeekExtraAmount(weekKey, empId, rawValue) {
+      if (!state.weekExtras[weekKey]) state.weekExtras[weekKey] = {};
+      const n = Math.max(0, Math.round((Number(rawValue) || 0) * 100) / 100);
+      state.weekExtras[weekKey][empId] = n;
+      save(STORAGE_KEYS.weekExtras, state.weekExtras);
+    }
+
+    let state = {
+      view: VIEWS.HOME,
+      employees: [],
+      sites: [],
+      entries: [],
+      weekDeductions: {},
+      weekExtras: {},
+      loading: true,
+      newEmpName: '',
+      newEmpRate: '',
+      newEmpAjuda: '',
+      newSiteName: '',
+      selectedEmp: '',
+      selectedSite: '',
+      reportEmail: '',
+      msg: '',
+      selectedWeek: getWeekStart(),
+      workDate: todayInputValue(),
+      clockInSlot: defaultSlotNow(),
+      clockOutSlot: defaultSlotNow(),
+      lunchStartSlot: '',
+      lunchEndSlot: '',
+    };
+
+    function getLocalSnapshot() {
+      return {
+        employees: state.employees,
+        sites: state.sites,
+        entries: state.entries,
+        reportEmail: state.reportEmail,
+        weekDeductions: state.weekDeductions,
+        weekExtras: state.weekExtras,
+      };
+    }
+
+    function applySnapshot(payload) {
+      state.employees = Array.isArray(payload.employees) ? payload.employees : [];
+      state.sites = Array.isArray(payload.sites) ? payload.sites : [];
+      state.entries = Array.isArray(payload.entries) ? payload.entries : [];
+      state.reportEmail = typeof payload.reportEmail === 'string' ? payload.reportEmail : '';
+      state.weekDeductions = payload.weekDeductions && typeof payload.weekDeductions === 'object' ? payload.weekDeductions : {};
+      state.weekExtras = payload.weekExtras && typeof payload.weekExtras === 'object' ? payload.weekExtras : {};
+    }
+
+    function persistLocalFromState() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.employees, JSON.stringify(state.employees));
+        localStorage.setItem(STORAGE_KEYS.sites, JSON.stringify(state.sites));
+        localStorage.setItem(STORAGE_KEYS.entries, JSON.stringify(state.entries));
+        localStorage.setItem(STORAGE_KEYS.email, state.reportEmail || '');
+        localStorage.setItem(STORAGE_KEYS.weekDeductions, JSON.stringify(state.weekDeductions || {}));
+        localStorage.setItem(STORAGE_KEYS.weekExtras, JSON.stringify(state.weekExtras || {}));
+      } catch (e) { console.error(e); }
+    }
+
+    function loadData() {
+      try {
+        const emp = localStorage.getItem(STORAGE_KEYS.employees);
+        const site = localStorage.getItem(STORAGE_KEYS.sites);
+        const entry = localStorage.getItem(STORAGE_KEYS.entries);
+        const email = localStorage.getItem(STORAGE_KEYS.email);
+        const ded = localStorage.getItem(STORAGE_KEYS.weekDeductions);
+        const ext = localStorage.getItem(STORAGE_KEYS.weekExtras);
+        if (emp) state.employees = JSON.parse(emp);
+        if (site) state.sites = JSON.parse(site);
+        if (entry) state.entries = JSON.parse(entry);
+        if (email) state.reportEmail = email;
+        if (ded) state.weekDeductions = JSON.parse(ded);
+        if (!state.weekDeductions || typeof state.weekDeductions !== 'object') state.weekDeductions = {};
+        if (ext) state.weekExtras = JSON.parse(ext);
+        if (!state.weekExtras || typeof state.weekExtras !== 'object') state.weekExtras = {};
+      } catch (e) { console.error(e); }
+      state.loading = false;
+      if (!state.workDate) state.workDate = todayInputValue();
+      if (!state.clockInSlot) state.clockInSlot = defaultSlotNow();
+      if (!state.clockOutSlot) state.clockOutSlot = defaultSlotNow();
+      if (state.lunchStartSlot == null) state.lunchStartSlot = '';
+      if (state.lunchEndSlot == null) state.lunchEndSlot = '';
+      // try auto-connect (org stored; passcode stored in session)
+      state.cloudOrg = localStorage.getItem('fortifyCloudOrg') || '';
+      state.cloudConnected = false;
+      state.cloudRev = Number(localStorage.getItem('fortifyCloudRev') || '0') || 0;
+      state.cloudLastSyncAt = localStorage.getItem('fortifyCloudLastSyncAt') || '';
+      render();
+      if (state.cloudOrg && sessionStorage.getItem('fortifyCloudPasscode')) {
+        cloudConnect(state.cloudOrg, sessionStorage.getItem('fortifyCloudPasscode'));
+      }
+    }
+
+    // Backwards-compatible save: always persist locally, and if cloud is connected we also sync.
+    function save(key, data) {
+      try {
+        localStorage.setItem(key, typeof data === 'string' ? data : JSON.stringify(data));
+      } catch (e) { console.error(e); }
+      queueCloudPush();
+    }
+
+    async function cloudFetchSnapshot(org, passcode) {
+      const res = await fetch('/.netlify/functions/sync?org=' + encodeURIComponent(org), {
+        headers: { 'x-fortify-passcode': passcode },
+      });
+      if (!res.ok) throw new Error('Cloud GET failed: ' + res.status);
+      return await res.json();
+    }
+
+    async function cloudPushSnapshot(org, passcode, payload) {
+      const res = await fetch('/.netlify/functions/sync?org=' + encodeURIComponent(org), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-fortify-passcode': passcode },
+        body: JSON.stringify({ org: org, payload: payload, baseRev: state.cloudRev || 0 }),
+      });
+      if (!res.ok) throw new Error('Cloud POST failed: ' + res.status);
+      return await res.json();
+    }
+
+    let cloudPushTimer = null;
+    let cloudPushInFlight = false;
+
+    function queueCloudPush() {
+      if (!state.cloudConnected) return;
+      if (cloudPushTimer) clearTimeout(cloudPushTimer);
+      cloudPushTimer = setTimeout(function () { cloudDoPush(); }, 800);
+    }
+
+    async function cloudDoPush() {
+      if (!state.cloudConnected) return;
+      if (cloudPushInFlight) return;
+      cloudPushInFlight = true;
+      try {
+        const org = state.cloudOrg;
+        const pass = sessionStorage.getItem('fortifyCloudPasscode') || '';
+        if (!org || !pass) return;
+        const payload = getLocalSnapshot();
+        const out = await cloudPushSnapshot(org, pass, payload);
+        if (out && typeof out.rev === 'number') {
+          state.cloudRev = out.rev;
+          localStorage.setItem('fortifyCloudRev', String(out.rev));
+        }
+        state.cloudLastSyncAt = new Date().toISOString();
+        localStorage.setItem('fortifyCloudLastSyncAt', state.cloudLastSyncAt);
+      } catch (e) {
+        console.error(e);
+        showMsg('Cloud sync falhou (sem internet ou configuração).');
+        state.cloudConnected = false;
+      } finally {
+        cloudPushInFlight = false;
+        render();
+      }
+    }
+
+    async function cloudPull() {
+      if (!state.cloudConnected) return;
+      try {
+        const org = state.cloudOrg;
+        const pass = sessionStorage.getItem('fortifyCloudPasscode') || '';
+        if (!org || !pass) return;
+        const snap = await cloudFetchSnapshot(org, pass);
+        if (snap && snap.payload) {
+          applySnapshot(snap.payload);
+          persistLocalFromState();
+          state.cloudRev = Number(snap.rev || 0) || 0;
+          localStorage.setItem('fortifyCloudRev', String(state.cloudRev));
+          state.cloudLastSyncAt = snap.updatedAt || new Date().toISOString();
+          localStorage.setItem('fortifyCloudLastSyncAt', state.cloudLastSyncAt);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        render();
+      }
+    }
+
+    let cloudPollTimer = null;
+    async function cloudConnect(org, passcode) {
+      state.cloudOrg = org;
+      localStorage.setItem('fortifyCloudOrg', org);
+      sessionStorage.setItem('fortifyCloudPasscode', passcode);
+      try {
+        const snap = await cloudFetchSnapshot(org, passcode);
+        if (snap && snap.payload) {
+          applySnapshot(snap.payload);
+          persistLocalFromState();
+          state.cloudRev = Number(snap.rev || 0) || 0;
+          localStorage.setItem('fortifyCloudRev', String(state.cloudRev));
+          state.cloudLastSyncAt = snap.updatedAt || new Date().toISOString();
+          localStorage.setItem('fortifyCloudLastSyncAt', state.cloudLastSyncAt);
+        }
+        state.cloudConnected = true;
+        showMsg('Cloud sync conectado');
+        if (cloudPollTimer) clearInterval(cloudPollTimer);
+        cloudPollTimer = setInterval(function () { cloudPull(); }, 8000);
+        document.addEventListener('visibilitychange', function () {
+          if (!document.hidden) cloudPull();
+        });
+        window.addEventListener('focus', function () { cloudPull(); });
+      } catch (e) {
+        console.error(e);
+        state.cloudConnected = false;
+        showMsg('Não conectou no cloud (ver senha/org).');
+      }
+      render();
+    }
+
+    function cloudDisconnect() {
+      state.cloudConnected = false;
+      sessionStorage.removeItem('fortifyCloudPasscode');
+      showMsg('Cloud desconectado');
+      render();
+    }
+let msgTimer;
+    function showMsg(text) {
+      state.msg = text;
+      render();
+      clearTimeout(msgTimer);
+      msgTimer = setTimeout(function () { state.msg = ''; render(); }, 2500);
+    }
+
+    function getActiveClocks() {
+      return state.entries.filter(function (e) { return !e.clockOut; });
+    }
+    function getWeekEntries(weekStart) {
+      const start = new Date(weekStart);
+      const end = new Date(getWeekEnd(weekStart));
+      return state.entries.filter(function (e) {
+        const d = new Date(e.clockIn);
+        return d >= start && d <= end;
+      });
+    }
+
+    /** Soma horas por obra e por funcionário numa semana (só registros com saída). */
+    function buildWeekBySiteRoster(weekStartIso) {
+      const weekEntries = getWeekEntries(weekStartIso).filter(function (e) { return e.clockOut; });
+      const agg = {};
+      weekEntries.forEach(function (e) {
+        const siteName = (state.sites.find(function (s) { return s.id === e.siteId; }) || {}).name || 'Obra desconhecida';
+        const emp = state.employees.find(function (x) { return x.id === e.employeeId; });
+        const name = (emp && emp.name) || 'Desconhecido';
+        if (!agg[siteName]) agg[siteName] = {};
+        const id = e.employeeId;
+        if (!agg[siteName][id]) agg[siteName][id] = { name: name, hours: 0 };
+        agg[siteName][id].hours += entryWorkedHours(e);
+      });
+      const out = {};
+      Object.keys(agg).sort().forEach(function (sn) {
+        out[sn] = Object.keys(agg[sn]).map(function (id) {
+          return { name: agg[sn][id].name, hours: Math.round(agg[sn][id].hours * 100) / 100 };
+        }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+      });
+      return out;
+    }
+
+    function htmlWeekBySiteRoster(weekStartIso, title) {
+      const merged = buildWeekBySiteRoster(weekStartIso);
+      const keys = Object.keys(merged);
+      if (keys.length === 0) return '';
+      keys.sort();
+      let h = '<div class="card" style="margin-top:12px"><div class="label section">' + escapeHtml(title) + '</div>';
+      keys.forEach(function (siteName) {
+        const rows = merged[siteName];
+        let siteTotal = 0;
+        rows.forEach(function (r) { siteTotal += r.hours; });
+        siteTotal = Math.round(siteTotal * 100) / 100;
+        h += '<div style="margin-top:12px;padding-bottom:8px;border-bottom:1px solid #2a2a2a">' +
+          '<div style="font-weight:700;color:#F26A21;font-size:14px">' + escapeHtml(siteName) + '</div>' +
+          '<div style="font-size:11px;color:#888;margin-top:2px">Total na obra (esta semana): ' + siteTotal + ' h</div>' +
+          '<ul style="margin:8px 0 0 18px;color:#ccc;font-size:13px;line-height:1.5">';
+        rows.forEach(function (row) {
+          h += '<li><strong>' + escapeHtml(row.name) + '</strong> — ' + row.hours + ' h</li>';
+        });
+        h += '</ul></div>';
+      });
+      h += '<p class="hint" style="margin-top:10px;margin-bottom:0">Cada entrada de ponto escolhe a <strong>obra</strong>. A mesma pessoa pode aparecer em várias obras na semana (ou no mesmo dia, em obras diferentes).</p></div>';
+      return h;
+    }
+    function generateReport() {
+      const weekEntries = getWeekEntries(state.selectedWeek);
+      const weekKey = state.selectedWeek;
+      const report = {};
+      state.employees.forEach(function (emp) {
+        const empEntries = weekEntries.filter(function (e) { return e.employeeId === emp.id && e.clockOut; });
+        const totalHours = empEntries.reduce(function (sum, e) { return sum + entryWorkedHours(e); }, 0);
+        const payHoras = Math.round(totalHours * emp.rate * 100) / 100;
+        const ajudaCusto = Math.round((Number(emp.ajudaCusto) || 0) * 100) / 100;
+        const deducao = getWeekDeduction(weekKey, emp.id);
+        const extraSemana = getWeekExtra(weekKey, emp.id);
+        const liquido = Math.round((payHoras + ajudaCusto - deducao + extraSemana) * 100) / 100;
+        const byDay = {};
+        empEntries.forEach(function (e) {
+          const day = e.date;
+          if (!byDay[day]) byDay[day] = 0;
+          byDay[day] += entryWorkedHours(e);
+        });
+        const bySite = {};
+        empEntries.forEach(function (e) {
+          const siteName = (state.sites.find(function (s) { return s.id === e.siteId; }) || {}).name || 'Unknown';
+          if (!bySite[siteName]) bySite[siteName] = 0;
+          bySite[siteName] += entryWorkedHours(e);
+        });
+        report[emp.id] = {
+          id: emp.id,
+          name: emp.name,
+          rate: emp.rate,
+          totalHours: Math.round(totalHours * 100) / 100,
+          totalPay: payHoras,
+          ajudaCusto: ajudaCusto,
+          deducao: deducao,
+          extraSemana: extraSemana,
+          liquido: liquido,
+          byDay: byDay,
+          bySite: bySite,
+          entries: empEntries,
+        };
+      });
+      return report;
+    }
+    function reportRowRelevant(emp) {
+      return emp.totalHours > 0 || emp.ajudaCusto > 0 || emp.deducao > 0 || emp.extraSemana > 0;
+    }
+
+    function getReportText() {
+      const report = generateReport();
+      const label = getWeekLabel(state.selectedWeek);
+      let text = 'FORTIFY — RELATÓRIO SEMANAL (FOLHA)\n';
+      text += 'Semana: ' + label + '\n';
+      text += 'Gerado: ' + new Date().toLocaleString() + '\n';
+      text += '='.repeat(50) + '\n\n';
+      text += 'RESUMO POR OBRA (quem trabalhou onde — esta semana)\n';
+      text += '-'.repeat(40) + '\n';
+      const rosterTxt = buildWeekBySiteRoster(state.selectedWeek);
+      const rosterKeys = Object.keys(rosterTxt).sort();
+      if (rosterKeys.length === 0) {
+        text += '(Nenhum registro com saída nesta semana.)\n';
+      } else {
+        rosterKeys.forEach(function (siteName) {
+          let sub = 0;
+          text += '\n' + siteName + ':\n';
+          rosterTxt[siteName].forEach(function (row) {
+            text += '  • ' + row.name + ': ' + row.hours + ' h\n';
+            sub += row.hours;
+          });
+          text += '  Subtotal na obra: ' + (Math.round(sub * 100) / 100) + ' h\n';
+        });
+      }
+      text += '\n' + '='.repeat(50) + '\n\n';
+      let grandLiquido = 0;
+      let grandHours = 0;
+      Object.values(report).forEach(function (emp) {
+        if (!reportRowRelevant(emp)) return;
+        text += 'FUNCIONÁRIO: ' + emp.name + '\n';
+        text += 'Obras nesta semana (horas): ' + (Object.keys(emp.bySite).length ? Object.entries(emp.bySite).map(function (p) { return p[0] + ' (' + (Math.round(p[1] * 100) / 100) + ' h)'; }).join('; ') : '—') + '\n';
+        text += 'Valor hora: $' + emp.rate.toFixed(2) + '/h\n';
+        text += 'Horas no período: ' + emp.totalHours + '\n';
+        text += 'Pagamento pelas horas: $' + emp.totalPay.toFixed(2) + '\n';
+        text += 'Ajuda de custo (viagem/carro): $' + emp.ajudaCusto.toFixed(2) + '\n';
+        text += 'Desconto / adiantamento (só esta pessoa, esta semana): $' + emp.deducao.toFixed(2) + '\n';
+        text += 'Extra / bônus (só esta pessoa, esta semana): $' + emp.extraSemana.toFixed(2) + '\n';
+        text += 'LÍQUIDO A PAGAR: $' + emp.liquido.toFixed(2) + '\n';
+        if (Object.keys(emp.bySite).length > 0) {
+          text += '\nPor obra:\n';
+          Object.entries(emp.bySite).forEach(function (pair) {
+            text += '  ' + pair[0] + ': ' + (Math.round(pair[1] * 100) / 100) + ' h\n';
+          });
+        }
+        if (Object.keys(emp.byDay).length > 0) {
+          text += '\nPor dia:\n';
+          Object.entries(emp.byDay).sort().forEach(function (pair) {
+            text += '  ' + formatDate(pair[0]) + ': ' + (Math.round(pair[1] * 100) / 100) + ' h\n';
+          });
+        }
+        text += '-'.repeat(40) + '\n\n';
+        grandLiquido += emp.liquido;
+        grandHours += emp.totalHours;
+      });
+      text += '='.repeat(50) + '\n';
+      text += 'TOTAL DE HORAS: ' + (Math.round(grandHours * 100) / 100) + '\n';
+      text += 'TOTAL LÍQUIDO A PAGAR (TODOS): $' + grandLiquido.toFixed(2) + '\n';
+      return text;
+    }
+
+    function setView(v) { state.view = v; render(); }
+
+    function addEmployee() {
+      if (!state.newEmpName.trim() || !state.newEmpRate) return;
+      const name = state.newEmpName.trim();
+      const ajuda = Math.round((parseFloat(state.newEmpAjuda) || 0) * 100) / 100;
+      const updated = state.employees.concat([{
+        id: String(Date.now()),
+        name: name,
+        rate: parseFloat(state.newEmpRate),
+        ajudaCusto: ajuda,
+      }]);
+      state.employees = updated;
+      save(STORAGE_KEYS.employees, updated);
+      state.newEmpName = '';
+      state.newEmpRate = '';
+      state.newEmpAjuda = '';
+      showMsg(name + ' adicionado');
+      render();
+    }
+    function removeEmployee(id) {
+      state.employees = state.employees.filter(function (e) { return e.id !== id; });
+      save(STORAGE_KEYS.employees, state.employees);
+      render();
+    }
+    function addSite() {
+      if (!state.newSiteName.trim()) return;
+      const name = state.newSiteName.trim();
+      const updated = state.sites.concat([{ id: String(Date.now()), name: name }]);
+      state.sites = updated;
+      save(STORAGE_KEYS.sites, updated);
+      state.newSiteName = '';
+      showMsg(name + ' added');
+      render();
+    }
+    function removeSite(id) {
+      state.sites = state.sites.filter(function (s) { return s.id !== id; });
+      save(STORAGE_KEYS.sites, state.sites);
+      render();
+    }
+    function clockIn() {
+      if (!state.selectedEmp || !state.selectedSite) { showMsg('Selecione funcionário e obra'); return; }
+      const active = state.entries.find(function (e) { return e.employeeId === state.selectedEmp && !e.clockOut; });
+      if (active) { showMsg('Esta pessoa ainda está com ponto aberto (sem saída).'); return; }
+      const clockInIso = combineDateTimeLocal(state.workDate, state.clockInSlot);
+      const dayKey = localDateKeyFromIso(clockInIso);
+      const jaTemNesteDiaNestaObra = state.entries.some(function (e) {
+        if (e.employeeId !== state.selectedEmp) return false;
+        if (String(e.siteId) !== String(state.selectedSite)) return false;
+        const d = e.date || localDateKeyFromIso(e.clockIn);
+        return d === dayKey;
+      });
+      if (jaTemNesteDiaNestaObra) {
+        showMsg('Já existe ponto neste dia para esta pessoa nesta obra. Use outra obra, outro dia, ou finalize o registro anterior.');
+        return;
+      }
+      let lunchStartIso = null;
+      let lunchEndIso = null;
+      if (state.lunchStartSlot && state.lunchEndSlot) {
+        lunchStartIso = combineDateTimeLocal(state.workDate, state.lunchStartSlot);
+        lunchEndIso = combineDateTimeLocal(state.workDate, state.lunchEndSlot);
+        if (new Date(lunchEndIso).getTime() <= new Date(lunchStartIso).getTime()) {
+          showMsg('Almoço: hora de fim deve ser depois da hora de início.');
+          return;
+        }
+        if (new Date(lunchStartIso).getTime() < new Date(clockInIso).getTime()) {
+          showMsg('Almoço: início não pode ser antes da entrada.');
+          return;
+        }
+      } else if (state.lunchStartSlot || state.lunchEndSlot) {
+        showMsg('Almoço: preencha início e fim, ou deixe os dois em branco.');
+        return;
+      }
+      const entry = {
+        id: String(Date.now()),
+        employeeId: state.selectedEmp,
+        siteId: state.selectedSite,
+        clockIn: clockInIso,
+        clockOut: null,
+        date: localDateKeyFromIso(clockInIso),
+        lunchStart: lunchStartIso,
+        lunchEnd: lunchEndIso,
+      };
+      state.entries = state.entries.concat([entry]);
+      save(STORAGE_KEYS.entries, state.entries);
+      const emp = state.employees.find(function (e) { return e.id === state.selectedEmp; });
+      const site = state.sites.find(function (s) { return s.id === state.selectedSite; });
+      showMsg((emp && emp.name) + ' clocked in at ' + (site && site.name));
+      render();
+    }
+    function clockOut(entryId, outDate, outSlot) {
+      const entry = state.entries.find(function (e) { return e.id === entryId; });
+      if (!entry) return;
+      const outIso = combineDateTimeLocal(outDate, outSlot);
+      if (new Date(outIso).getTime() <= new Date(entry.clockIn).getTime()) {
+        showMsg('Saída deve ser depois da entrada.');
+        return;
+      }
+      if (entry.lunchStart && entry.lunchEnd) {
+        if (new Date(entry.lunchEnd).getTime() > new Date(outIso).getTime()) {
+          showMsg('Almoço não pode terminar depois da hora de saída.');
+          return;
+        }
+      }
+      state.entries = state.entries.map(function (e) {
+        return e.id === entryId ? Object.assign({}, e, { clockOut: outIso }) : e;
+      });
+      save(STORAGE_KEYS.entries, state.entries);
+      showMsg('Clocked out');
+      render();
+    }
+
+    function exportBackup() {
+      const payload = {
+        fortifyCrewBackup: 3,
+        exportedAt: new Date().toISOString(),
+        employees: state.employees,
+        sites: state.sites,
+        entries: state.entries,
+        reportEmail: state.reportEmail,
+        weekDeductions: state.weekDeductions,
+        weekExtras: state.weekExtras,
+      };
+      const text = JSON.stringify(payload, null, 2);
+      const blob = new Blob([text], { type: 'application/json' });
+      const filename = 'fortify-crew-backup.json';
+
+      function fallbackDownload() {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showMsg('File saved — send fortify-crew-backup.json to your foreman');
+      }
+
+      if (navigator.share && navigator.canShare) {
+        try {
+          const file = new File([blob], filename, { type: 'application/json' });
+          if (navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: 'Fortify crew backup', text: 'Crew times backup' }).then(function () {
+              showMsg('Shared');
+            }).catch(function (err) {
+              if (err && err.name === 'AbortError') return;
+              fallbackDownload();
+            });
+            return;
+          }
+        } catch (err) { /* continue */ }
+      }
+      fallbackDownload();
+    }
+
+    function importBackupFromText(text) {
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        showMsg('Invalid JSON file');
+        return;
+      }
+      if (!data || (data.fortifyCrewBackup !== 1 && data.fortifyCrewBackup !== 2 && data.fortifyCrewBackup !== 3) || !Array.isArray(data.employees)) {
+        showMsg('Not a Fortify backup file');
+        return;
+      }
+      if (!window.confirm('Replace all crew data on this phone with the backup?')) return;
+      state.employees = data.employees;
+      state.sites = Array.isArray(data.sites) ? data.sites : [];
+      state.entries = Array.isArray(data.entries) ? data.entries : [];
+      state.reportEmail = typeof data.reportEmail === 'string' ? data.reportEmail : '';
+      state.weekDeductions = data.weekDeductions && typeof data.weekDeductions === 'object' ? data.weekDeductions : {};
+      state.weekExtras = data.weekExtras && typeof data.weekExtras === 'object' ? data.weekExtras : {};
+      save(STORAGE_KEYS.employees, state.employees);
+      save(STORAGE_KEYS.sites, state.sites);
+      save(STORAGE_KEYS.entries, state.entries);
+      save(STORAGE_KEYS.email, state.reportEmail);
+      save(STORAGE_KEYS.weekDeductions, state.weekDeductions);
+      save(STORAGE_KEYS.weekExtras, state.weekExtras);
+      showMsg('Import complete');
+      render();
+    }
+    function deleteEntry(entryId) {
+      state.entries = state.entries.filter(function (e) { return e.id !== entryId; });
+      save(STORAGE_KEYS.entries, state.entries);
+      render();
+    }
+    function saveEmail(ev) {
+      if (ev && ev.target) state.reportEmail = ev.target.value;
+      save(STORAGE_KEYS.email, state.reportEmail);
+      showMsg('Email saved');
+    }
+    function prevWeek() {
+      const d = new Date(state.selectedWeek);
+      d.setDate(d.getDate() - 7);
+      state.selectedWeek = d.toISOString();
+      render();
+    }
+    function nextWeek() {
+      const d = new Date(state.selectedWeek);
+      d.setDate(d.getDate() + 7);
+      state.selectedWeek = d.toISOString();
+      render();
+    }
+    function emailReport() {
+      const text = getReportText();
+      const label = getWeekLabel(state.selectedWeek);
+      const subject = encodeURIComponent('Fortify — Relatório semanal — ' + label);
+      const body = encodeURIComponent(text);
+      const to = state.reportEmail || '';
+      window.open('mailto:' + to + '?subject=' + subject + '&body=' + body, '_blank');
+    }
+
+    function navBtn(viewKey, icon, label) {
+      const active = state.view === viewKey ? ' active' : '';
+      return '<button type="button" class="nav-btn' + active + '" data-action="view" data-view="' + viewKey + '"><span style="font-size:18px">' + icon + '</span>' + label + '</button>';
+    }
+
+    function render() {
+      const root = document.getElementById('root');
+      if (state.loading) {
+        root.innerHTML = '<div class="loading-screen">Loading...</div>';
+        return;
+      }
+
+      let main = '';
+      const activeClocks = getActiveClocks();
+      const activeClocksCount = activeClocks.length;
+
+      if (state.view === VIEWS.HOME) {
+        const entriesThisWeek = getWeekEntries(getWeekStart()).filter(function (e) { return e.clockOut; }).length;
+        let working = '';
+        if (activeClocks.length > 0) {
+          working = '<div class="label section">Currently Working</div>';
+          activeClocks.forEach(function (entry) {
+            const emp = state.employees.find(function (e) { return e.id === entry.employeeId; });
+            const site = state.sites.find(function (s) { return s.id === entry.siteId; });
+            working += '<div class="card-highlight active-clock-card" data-work-date="' + escapeHtml(entry.date || localDateKeyFromIso(entry.clockIn)) + '">' +
+              '<div class="flex-between">' +
+              '<div><div class="title-sm">' + escapeHtml(emp && emp.name) + '</div>' +
+              '<div class="muted">' + escapeHtml(site && site.name) + ' · Entrada: ' + formatTime(entry.clockIn) + '</div></div></div>' +
+              '<div class="muted-xs" style="margin-top:8px">Data do dia: ' + escapeHtml(entry.date || localDateKeyFromIso(entry.clockIn)) + '</div>' +
+              '<div class="label" style="margin-top:10px">Hora de saída (6h–20h, 30 em 30 min)</div>' +
+              '<select class="select" data-out-slot>' + buildWorkdaySlotsHtml(defaultSlotNow()) + '</select>' +
+              '<button type="button" class="btn-primary green" data-action="clockOutCard" data-id="' + escapeHtml(entry.id) + '">Saída</button></div>';
+          });
+        }
+
+        const shareCard = '<div class="card" style="margin-top:8px">' +
+          '<div class="label">Cloud sync (compartilhado)</div>' +
+          '<p class="hint"><strong>Sincroniza entre telefones:</strong> configure uma vez (Org + Senha). Depois disso, tudo que qualquer pessoa com acesso fizer aparece automaticamente em todos os celulares.</p>' +
+          '<div class="label" style="margin-top:8px">Org (código da empresa)</div>' +
+          '<input class="input" placeholder="ex: fortify" data-cloud-org value="' + escapeHtml(state.cloudOrg || '') + '" />' +
+          '<div class="label">Senha (passcode)</div>' +
+          '<input class="input" placeholder="****" type="password" data-cloud-pass value="" />' +
+          '<div class="btn-row">' +
+          '<button type="button" class="btn-primary" data-action="cloudConnect">' + (state.cloudConnected ? 'Reconectar' : 'Conectar') + '</button>' +
+          '<button type="button" class="btn-secondary" data-action="cloudDisconnect">Desconectar</button></div>' +
+          '<p class="hint" style="margin-top:10px">Status: <strong>' + (state.cloudConnected ? 'Conectado' : 'Desconectado') + '</strong>' + (state.cloudLastSyncAt ? (' · Último sync: ' + new Date(state.cloudLastSyncAt).toLocaleString()) : '') + '</p>' +
+          '<div class="divider" style="margin:14px 0"></div>' +
+          '<div class="label">Backup manual (opcional)</div>' +
+          '<p class="hint">Se quiser, ainda dá para exportar/importar um arquivo. Mas com cloud sync ligado, normalmente não precisa.</p>' +
+          '<p class="hint"><strong>Where data saves:</strong> Only in <em>this</em> browser on <em>this</em> device (browser storage: localStorage). It survives closing the tab, but it is not on the internet and does not sync to other phones. Clear “website data” for this site and it can be erased.</p>' +
+          '<p class="hint"><strong>A link for everyone:</strong> A <code>file:///…</code> address only works on your machine. To give people a normal link, put this same HTML file online (free: go to <a href="https://app.netlify.com/drop" target="_blank" rel="noopener" style="color:#F26A21">netlify.com/drop</a>, drag the file in, get an <code>https://…</code> URL) and email that URL. Each device still keeps its own copy of entries unless you use Export / Import.</p>' +
+          '<p class="hint"><strong>Email every Saturday (hours, jobs, rates, totals):</strong> This page cannot schedule emails by itself—that needs an online app with a database and an email service (cron job). For now use <strong>Pay</strong> → Email / Copy Report each week. If you want, we can plan a small hosted version that sends that report automatically.</p>' +
+          '<p class="hint"><strong>Foreman:</strong> Export a backup file and send it (text, email, AirDrop). They open this same page and tap Import.</p>' +
+          '<div class="btn-row">' +
+          '<button type="button" class="btn-primary" data-action="exportBackup">Export backup</button>' +
+          '<button type="button" class="btn-secondary" data-action="pickImport">Import backup</button></div>' +
+          '<input type="file" accept="application/json,.json" style="display:none" id="import-file-input" /></div>';
+        let empty = '';
+        if (state.employees.length === 0) {
+          empty = '<div class="empty-state"><div class="emoji-big">👷</div><div style="color:#888;font-size:14px">Add employees and job sites to get started</div></div>';
+        }
+        const cardActive = activeClocksCount > 0 ? 'card-highlight' : 'card';
+        main = '<div class="page"><div class="page-title">Dashboard</div><div class="page-subtitle">Overview</div>' +
+          '<div class="grid-2">' +
+          '<div class="card"><div class="stat"><div class="stat-number">' + state.employees.length + '</div><div class="stat-label">Employees</div></div></div>' +
+          '<div class="' + cardActive + '"><div class="stat"><div class="stat-number' + (activeClocksCount > 0 ? ' green' : '') + '">' + activeClocksCount + '</div><div class="stat-label">Active Now</div></div></div>' +
+          '<div class="card"><div class="stat"><div class="stat-number">' + state.sites.length + '</div><div class="stat-label">Job Sites</div></div></div>' +
+          '<div class="card"><div class="stat"><div class="stat-number">' + entriesThisWeek + '</div><div class="stat-label">Entries This Week</div></div></div></div>' +
+          htmlWeekBySiteRoster(getWeekStart(), 'Esta semana — por obra (quem está onde)') +
+          working + shareCard + empty + '</div>';
+      }
+
+      if (state.view === VIEWS.EMPLOYEES) {
+        let list = '';
+        state.employees.forEach(function (emp) {
+          const ajudaVal = (emp.ajudaCusto != null && emp.ajudaCusto !== '') ? Number(emp.ajudaCusto) : 0;
+          list += '<div class="card">' +
+            '<div class="flex-between">' +
+            '<div><div class="title-sm">' + escapeHtml(emp.name) + '</div><div class="rate">$' + Number(emp.rate).toFixed(2) + '/h</div></div>' +
+            '<button type="button" class="btn-danger" data-action="removeEmp" data-id="' + escapeHtml(emp.id) + '">Remover</button></div>' +
+            '<div class="label" style="margin-top:12px">Ajuda de custo ($ / semana)</div>' +
+            '<p class="hint" style="margin-top:0">Viagem com carro próprio, etc. Entra no relatório e no e-mail.</p>' +
+            '<input type="number" min="0" step="0.01" class="input" data-emp-ajuda data-id="' + escapeHtml(emp.id) + '" value="' + escapeHtml(String(ajudaVal)) + '" />' +
+            '</div>';
+        });
+        const emptyEmp = state.employees.length === 0 ? '<div class="empty-state"><div style="color:#555">Nenhum funcionário ainda</div></div>' : '';
+        main = '<div class="page"><div class="page-title">Equipe</div><div class="page-subtitle">Valores por hora e ajuda de custo semanal</div>' +
+          '<div class="card"><div class="label">Adicionar funcionário</div>' +
+          '<input class="input" placeholder="Nome" data-bind="newEmpName" value="' + escapeHtml(state.newEmpName) + '" />' +
+          '<input class="input" placeholder="Valor hora ($)" type="number" step="0.5" data-bind="newEmpRate" value="' + escapeHtml(state.newEmpRate) + '" />' +
+          '<input class="input" placeholder="Ajuda de custo ($ por semana)" type="number" step="0.01" min="0" data-bind="newEmpAjuda" value="' + escapeHtml(state.newEmpAjuda) + '" />' +
+          '<button type="button" class="btn-primary" data-action="addEmployee">Adicionar</button></div>' + list + emptyEmp + '</div>';
+      }
+
+      if (state.view === VIEWS.SITES) {
+        let list = '';
+        state.sites.forEach(function (site) {
+          list += '<div class="card"><div class="flex-between"><div class="title-sm">' + escapeHtml(site.name) + '</div>' +
+            '<button type="button" class="btn-danger" data-action="removeSite" data-id="' + escapeHtml(site.id) + '">Remove</button></div></div>';
+        });
+        const emptySites = state.sites.length === 0 ? '<div class="empty-state"><div style="color:#555">No job sites yet</div></div>' : '';
+        main = '<div class="page"><div class="page-title">Job Sites</div><div class="page-subtitle">Manage active job sites</div>' +
+          '<div class="card"><div class="label">Add Job Site</div>' +
+          '<input class="input" placeholder="Job site name or address" data-bind="newSiteName" value="' + escapeHtml(state.newSiteName) + '" />' +
+          '<button type="button" class="btn-primary" data-action="addSite">Add Site</button></div>' + list + emptySites + '</div>';
+      }
+
+      if (state.view === VIEWS.CLOCK) {
+        if (state.employees.length === 0 || state.sites.length === 0) {
+          main = '<div class="page"><div class="page-title">Clock In/Out</div><div class="page-subtitle">Register employee time</div>' +
+            '<div class="empty-state sm">Add employees and job sites first</div></div>';
+        } else {
+          let empOpts = '<option value="">Select employee</option>';
+          state.employees.forEach(function (emp) {
+            const isActive = state.entries.some(function (e) { return e.employeeId === emp.id && !e.clockOut; });
+            empOpts += '<option value="' + escapeHtml(emp.id) + '"' + (state.selectedEmp === emp.id ? ' selected' : '') + '>' + escapeHtml(emp.name) + (isActive ? ' ⏱ (working)' : '') + '</option>';
+          });
+          let siteOpts = '<option value="">Select job site</option>';
+          state.sites.forEach(function (site) {
+            siteOpts += '<option value="' + escapeHtml(site.id) + '"' + (state.selectedSite === site.id ? ' selected' : '') + '>' + escapeHtml(site.name) + '</option>';
+          });
+          const selActive = state.selectedEmp && state.entries.some(function (e) { return e.employeeId === state.selectedEmp && !e.clockOut; });
+          const activeEntry = selActive ? state.entries.find(function (e) { return e.employeeId === state.selectedEmp && !e.clockOut; }) : null;
+          const clockInBlock =
+            '<div class="subhead">Entrada</div>' +
+            '<p class="hint">Uma data para o dia todo. Horários de 6h a 20h, a cada 30 min.</p>' +
+            '<div class="label">Data do trabalho</div>' +
+            '<input type="date" class="input" data-bind="workDate" value="' + escapeHtml(state.workDate) + '" />' +
+            '<div class="label">Hora de entrada</div>' +
+            '<select class="select" data-bind="clockInSlot">' + buildWorkdaySlotsHtml(state.clockInSlot) + '</select>' +
+            '<div class="label" style="margin-top:8px">Almoço (opcional)</div>' +
+            '<p class="hint" style="margin-top:0">Mesmo dia. A duração do almoço é descontada das horas trabalhadas.</p>' +
+            '<div class="label" style="font-size:10px;margin-bottom:4px">Início da pausa</div>' +
+            '<select class="select" data-bind="lunchStartSlot">' + buildWorkdaySlotsHtml(state.lunchStartSlot, true) + '</select>' +
+            '<div class="label" style="font-size:10px;margin-bottom:4px">Fim da pausa</div>' +
+            '<select class="select" data-bind="lunchEndSlot">' + buildWorkdaySlotsHtml(state.lunchEndSlot, true) + '</select>' +
+            '<button type="button" class="btn-primary" data-action="clockIn"' + (selActive ? ' disabled style="opacity:0.45;cursor:not-allowed"' : '') + '>⏵ Entrada</button>';
+
+          const clockOutBlock = selActive && activeEntry
+            ? '<div class="subhead">Saída</div>' +
+              '<p class="hint" style="margin-top:0">Mesmo dia do registro: <strong>' + escapeHtml(activeEntry.date || localDateKeyFromIso(activeEntry.clockIn)) + '</strong> — só escolha a hora.</p>' +
+              '<div class="label">Hora de saída</div>' +
+              '<select class="select" data-bind="clockOutSlot">' + buildWorkdaySlotsHtml(state.clockOutSlot) + '</select>' +
+              '<button type="button" class="btn-primary green" data-action="clockOutSelected">⏹ Saída</button>'
+            : '';
+
+          let activeBlock = '';
+          if (activeClocks.length > 0) {
+            activeBlock = '<div class="label section-mt">Ainda no ponto</div>';
+            activeClocks.forEach(function (entry) {
+              const emp = state.employees.find(function (e) { return e.id === entry.employeeId; });
+              const site = state.sites.find(function (s) { return s.id === entry.siteId; });
+              const wd = entry.date || localDateKeyFromIso(entry.clockIn);
+              activeBlock += '<div class="card-highlight active-clock-card" data-work-date="' + escapeHtml(wd) + '">' +
+                '<div class="flex-between">' +
+                '<div><div style="font-weight:700">' + escapeHtml(emp && emp.name) + '</div><div class="muted-sm">' + escapeHtml(site && site.name) + ' · desde ' + formatTime(entry.clockIn) + '</div></div></div>' +
+                '<div class="muted-xs" style="margin-top:8px">Dia: ' + escapeHtml(wd) + '</div>' +
+                '<div class="label" style="margin-top:10px">Hora de saída</div>' +
+                '<select class="select" data-out-slot>' + buildWorkdaySlotsHtml(defaultSlotNow()) + '</select>' +
+                '<button type="button" class="btn-small" style="width:100%;margin-top:8px" data-action="clockOutCard" data-id="' + escapeHtml(entry.id) + '">Saída</button></div>';
+            });
+          }
+          main = '<div class="page"><div class="page-title">Ponto</div><div class="page-subtitle">Data única do dia · entrada, almoço e saída</div>' +
+            '<div class="card"><div class="label">Funcionário</div>' +
+            '<select class="select" data-bind="selectedEmp">' + empOpts + '</select>' +
+            '<div class="label">Obra (cada registro fica ligado a esta obra)</div>' +
+            '<p class="hint" style="margin-top:0">Vários funcionários podem estar em obras diferentes; cada entrada escolhe uma obra.</p>' +
+            '<select class="select" data-bind="selectedSite">' + siteOpts + '</select>' +
+            clockInBlock + clockOutBlock + '</div>' + activeBlock + '</div>';
+        }
+      }
+
+      if (state.view === VIEWS.TIMESHEET) {
+        const weekList = getWeekEntries(state.selectedWeek);
+        if (weekList.length === 0) {
+          main = '<div class="page"><div class="page-title">Timesheet</div>' +
+            '<div class="week-nav"><button type="button" data-action="prevWeek">← Prev</button><div class="week-label">' + escapeHtml(getWeekLabel(state.selectedWeek)) + '</div><button type="button" data-action="nextWeek">Next →</button></div>' +
+            '<div class="empty-state"><div style="color:#555">No entries this week</div></div></div>';
+        } else {
+          let rows = '';
+          weekList.slice().sort(function (a, b) { return new Date(b.clockIn) - new Date(a.clockIn); }).forEach(function (entry) {
+            const emp = state.employees.find(function (e) { return e.id === entry.employeeId; });
+            const site = state.sites.find(function (s) { return s.id === entry.siteId; });
+            const hours = entry.clockOut ? entryWorkedHours(entry) : null;
+            const cardClass = entry.clockOut ? 'card' : 'card-highlight';
+            const outSpan = entry.clockOut
+              ? '<span style="color:#ff6b6b">' + formatTime(entry.clockOut) + '</span>'
+              : '<span style="color:#F26A21">Active</span>';
+            const hoursBlock = hours !== null
+              ? '<div class="hours-big">' + hours + '</div><div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px">hours</div>'
+              : '';
+            const badge = !entry.clockOut ? '<div class="badge green" style="margin-top:4px">Active</div>' : '';
+            rows += '<div class="' + cardClass + '"><div class="flex-between start">' +
+              '<div><div style="font-weight:700">' + escapeHtml((emp && emp.name) || 'Unknown') + '</div>' +
+              '<div class="muted-sm">Obra: <strong style="color:#F26A21">' + escapeHtml((site && site.name) || '—') + '</strong></div>' +
+              '<div class="muted-xs">' + formatDate(entry.clockIn) + '</div>' +
+              '<div style="font-size:13px;margin-top:6px"><span style="color:#4CAF50">' + formatTime(entry.clockIn) + '</span><span style="color:#555"> → </span>' + outSpan + '</div>' +
+              (entry.lunchStart && entry.lunchEnd
+                ? '<div class="muted-xs" style="margin-top:6px">Almoço: ' + formatTime(entry.lunchStart) + ' – ' + formatTime(entry.lunchEnd) + '</div>'
+                : '') +
+              '</div>' +
+              '<div class="text-right">' + hoursBlock + badge +
+              '<button type="button" class="btn-danger tiny" data-action="deleteEntry" data-id="' + escapeHtml(entry.id) + '">Delete</button></div></div></div>';
+          });
+          main = '<div class="page"><div class="page-title">Timesheet</div>' +
+            '<div class="week-nav"><button type="button" data-action="prevWeek">← Prev</button><div class="week-label">' + escapeHtml(getWeekLabel(state.selectedWeek)) + '</div><button type="button" data-action="nextWeek">Next →</button></div>' + rows + '</div>';
+        }
+      }
+
+      if (state.view === VIEWS.REPORT) {
+        const report = generateReport();
+        const hasData = Object.values(report).some(reportRowRelevant);
+        const weekKeyAttr = escapeHtml(state.selectedWeek);
+        if (!hasData) {
+          main = '<div class="page"><div class="page-title">Folha / Pagamento</div>' +
+            '<div class="week-nav"><button type="button" data-action="prevWeek">← Anterior</button><div class="week-label">' + escapeHtml(getWeekLabel(state.selectedWeek)) + '</div><button type="button" data-action="nextWeek">Próxima →</button></div>' +
+            htmlWeekBySiteRoster(state.selectedWeek, 'Semana — por obra (quem trabalhou onde)') +
+            '<div class="empty-state"><div style="color:#555">Sem horas, ajuda ou ajustes individuais nesta semana</div></div></div>';
+        } else {
+          let grandHours = 0;
+          let grandLiquido = 0;
+          Object.values(report).forEach(function (e) {
+            if (!reportRowRelevant(e)) return;
+            grandHours += e.totalHours;
+            grandLiquido += e.liquido;
+          });
+          let empCards = '';
+          Object.values(report).filter(reportRowRelevant).forEach(function (emp) {
+            let sitesHtml = '';
+            Object.entries(emp.bySite).forEach(function (pair) {
+              sitesHtml += '<div class="row-site"><span>' + escapeHtml(pair[0]) + '</span><span>' + (Math.round(pair[1] * 100) / 100) + ' h</span></div>';
+            });
+            let daysHtml = '';
+            Object.entries(emp.byDay).sort().forEach(function (pair) {
+              daysHtml += '<div class="row-site"><span>' + formatDate(pair[0]) + '</span><span>' + (Math.round(pair[1] * 100) / 100) + ' h</span></div>';
+            });
+            const dedVal = getWeekDeduction(state.selectedWeek, emp.id || '');
+            const extVal = getWeekExtra(state.selectedWeek, emp.id || '');
+            empCards += '<div class="card">' +
+              '<div class="flex-between start" style="margin-bottom:12px">' +
+              '<div><div class="title-sm">' + escapeHtml(emp.name) + '</div>' +
+              '<div style="font-size:12px;color:#888;margin-top:4px">Obras (h): ' + (Object.keys(emp.bySite).length ? Object.entries(emp.bySite).map(function (p) { return escapeHtml(p[0]) + ' (' + (Math.round(p[1] * 100) / 100) + 'h)'; }).join(' · ') : '—') + '</div>' +
+              '<div style="font-size:12px;color:#666;margin-top:2px">$' + emp.rate.toFixed(2) + '/h · ' + emp.totalHours + ' h totais</div></div>' +
+              '<div class="text-right"><div class="hours-pay">$' + emp.liquido.toFixed(2) + '</div><div style="font-size:11px;color:#888">Líquido (só ' + escapeHtml(emp.name) + ')</div></div></div>' +
+              '<div class="row-site"><span>Horas (bruto)</span><span>$' + emp.totalPay.toFixed(2) + '</span></div>' +
+              '<div class="row-site"><span>Ajuda de custo (cadastro)</span><span>+$' + emp.ajudaCusto.toFixed(2) + '</span></div>' +
+              '<div class="ajustes-pessoa">' +
+              '<div class="ajustes-pessoa-titulo">Ajustes desta semana — só ' + escapeHtml(emp.name) + '</div>' +
+              '<p class="hint" style="margin-top:0;margin-bottom:12px">Isto é <strong>individual</strong>: o que você preencher aqui vale <strong>apenas</strong> para <strong>' + escapeHtml(emp.name) + '</strong>. Outros funcionários têm o <strong>próprio</strong> bloco no cartão deles.</p>' +
+              '<div class="label" style="margin-top:0">Desconto ou adiantamento a descontar ($)</div>' +
+              '<p class="hint" style="margin-top:0">Só para ' + escapeHtml(emp.name) + ' — ex.: recuperar $100 de adiantamento.</p>' +
+              '<input type="number" min="0" step="0.01" class="input" style="margin-bottom:12px" data-week-deduction data-week="' + weekKeyAttr + '" data-emp-id="' + escapeHtml(emp.id) + '" value="' + escapeHtml(String(dedVal)) + '" />' +
+              '<div class="label">Extra ou bônus a somar ($)</div>' +
+              '<p class="hint" style="margin-top:0">Só para ' + escapeHtml(emp.name) + ' — gratificação, hora extra manual, etc.</p>' +
+              '<input type="number" min="0" step="0.01" class="input" data-week-extra data-week="' + weekKeyAttr + '" data-emp-id="' + escapeHtml(emp.id) + '" value="' + escapeHtml(String(extVal)) + '" />' +
+              '</div>' +
+              (Object.keys(emp.bySite).length > 0 ? '<div class="divider"></div><div class="section-title">Por obra</div>' + sitesHtml : '') +
+              (Object.keys(emp.byDay).length > 0 ? '<div class="divider tight"></div><div class="section-title">Por dia</div>' + daysHtml : '') +
+              '</div>';
+          });
+          main = '<div class="page"><div class="page-title">Folha / Pagamento</div>' +
+            '<div class="week-nav"><button type="button" data-action="prevWeek">← Anterior</button><div class="week-label">' + escapeHtml(getWeekLabel(state.selectedWeek)) + '</div><button type="button" data-action="nextWeek">Próxima →</button></div>' +
+            htmlWeekBySiteRoster(state.selectedWeek, 'Semana — por obra (quem trabalhou onde)') +
+            '<p class="hint" style="margin-bottom:14px">Cada ponto grava a <strong>obra</strong> escolhida na entrada. Cada pessoa tem o <strong>próprio cartão</strong> abaixo; os ajustes na caixa laranja são só dela.</p>' +
+            '<div class="grid-2">' +
+            '<div class="card"><div class="stat"><div class="stat-number">' + (Math.round(grandHours * 100) / 100) + '</div><div class="stat-label">Total horas</div></div></div>' +
+            '<div class="card-highlight"><div class="stat"><div class="stat-number">$' + grandLiquido.toFixed(0) + '</div><div class="stat-label">Total líquido (todos)</div></div></div></div>' +
+            empCards +
+            '<div class="card" style="margin-top:20px"><div class="label">Enviar relatório por e-mail</div>' +
+            '<p class="hint" style="margin-top:0">Quando quiser: preencha o e-mail, depois <strong>Enviar</strong> — o texto inclui, <strong>por funcionário</strong>, horas, obras, ajuda de custo, desconto individual, extra individual e líquido. O envio final é no seu app de e-mail.</p>' +
+            '<input class="input" placeholder="seu@email.com" type="email" data-bind="reportEmail" value="' + escapeHtml(state.reportEmail) + '" />' +
+            '<button type="button" class="btn-primary" data-action="emailReport">📧 Enviar relatório (e-mail)</button>' +
+            '<div style="margin-top:12px"><button type="button" class="btn-secondary" data-action="copyReport">📋 Copiar relatório</button></div></div></div>';
+        }
+      }
+
+      const toast = state.msg ? '<div class="toast">' + escapeHtml(state.msg) + '</div>' : '';
+      const headerDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+      root.innerHTML =
+        '<div class="app">' + toast +
+        '<div class="header"><div><div class="logo">Fortify</div><div class="subtitle">Crew Tracker</div></div>' +
+        '<div style="font-size:12px;color:#888">' + headerDate + '</div></div>' + main +
+        '<div class="nav">' +
+        navBtn(VIEWS.HOME, '🏠', 'Home') +
+        navBtn(VIEWS.EMPLOYEES, '👷', 'Crew') +
+        navBtn(VIEWS.SITES, '📍', 'Sites') +
+        navBtn(VIEWS.CLOCK, '⏱', 'Clock') +
+        navBtn(VIEWS.TIMESHEET, '📋', 'Hours') +
+        navBtn(VIEWS.REPORT, '💰', 'Pay') +
+        '</div></div>';
+
+      root.querySelectorAll('[data-bind]').forEach(function (el) {
+        const key = el.getAttribute('data-bind');
+        el.addEventListener('input', function () {
+          state[key] = el.value;
+        });
+        el.addEventListener('change', function () {
+          state[key] = el.value;
+          if (key === 'selectedEmp' || key === 'selectedSite' || key === 'workDate') render();
+        });
+      });
+
+      function syncClockBindsFromDom() {
+        ['workDate', 'clockInSlot', 'clockOutSlot', 'lunchStartSlot', 'lunchEndSlot'].forEach(function (key) {
+          const el = root.querySelector('[data-bind="' + key + '"]');
+          if (el) state[key] = el.value;
+        });
+      }
+
+      const fileInp = root.querySelector('#import-file-input');
+      if (fileInp) {
+        fileInp.onchange = function (ev) {
+          const f = ev.target.files && ev.target.files[0];
+          if (!f) return;
+          const reader = new FileReader();
+          reader.onload = function () {
+            importBackupFromText(String(reader.result || ''));
+            fileInp.value = '';
+          };
+          reader.readAsText(f);
+        };
+      }
+      const emailInput = root.querySelector('[data-bind="reportEmail"]');
+      if (emailInput) emailInput.addEventListener('blur', saveEmail);
+
+      root.querySelectorAll('[data-emp-ajuda]').forEach(function (el) {
+        el.addEventListener('change', function () {
+          const id = el.getAttribute('data-id');
+          const emp = state.employees.find(function (e) { return e.id === id; });
+          if (!emp) return;
+          emp.ajudaCusto = Math.max(0, Math.round((parseFloat(el.value) || 0) * 100) / 100);
+          el.value = String(emp.ajudaCusto);
+          save(STORAGE_KEYS.employees, state.employees);
+          showMsg('Ajuda de custo salva');
+        });
+      });
+
+      root.querySelectorAll('[data-week-deduction]').forEach(function (el) {
+        el.addEventListener('change', function () {
+          const wk = el.getAttribute('data-week');
+          const eid = el.getAttribute('data-emp-id');
+          if (!wk || !eid) return;
+          setWeekDeductionAmount(wk, eid, el.value);
+          el.value = String(getWeekDeduction(wk, eid));
+          showMsg('Desconto (só esta pessoa) salvo');
+        });
+      });
+
+      root.querySelectorAll('[data-week-extra]').forEach(function (el) {
+        el.addEventListener('change', function () {
+          const wk = el.getAttribute('data-week');
+          const eid = el.getAttribute('data-emp-id');
+          if (!wk || !eid) return;
+          setWeekExtraAmount(wk, eid, el.value);
+          el.value = String(getWeekExtra(wk, eid));
+          showMsg('Extra / bônus (só esta pessoa) salvo');
+        });
+      });
+
+      root.querySelectorAll('[data-action]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          const action = el.getAttribute('data-action');
+          if (action === 'view') setView(el.getAttribute('data-view'));
+          if (action === 'addEmployee') addEmployee();
+          if (action === 'addSite') addSite();
+          if (action === 'removeEmp') removeEmployee(el.getAttribute('data-id'));
+          if (action === 'removeSite') removeSite(el.getAttribute('data-id'));
+          if (action === 'clockIn') {
+            syncClockBindsFromDom();
+            clockIn();
+          }
+          if (action === 'clockOutCard') {
+            const id = el.getAttribute('data-id');
+            const card = el.closest('.active-clock-card');
+            const workD = card && card.getAttribute('data-work-date');
+            const slotEl = card && card.querySelector('[data-out-slot]');
+            if (workD && slotEl && id) clockOut(id, workD, slotEl.value);
+          }
+          if (action === 'clockOutSelected') {
+            syncClockBindsFromDom();
+            const active = state.entries.find(function (e) { return e.employeeId === state.selectedEmp && !e.clockOut; });
+            if (active) clockOut(active.id, active.date || localDateKeyFromIso(active.clockIn), state.clockOutSlot);
+          }
+          if (action === 'cloudConnect') {
+            const orgEl = document.querySelector('[data-cloud-org]');
+            const passEl = document.querySelector('[data-cloud-pass]');
+            const org = (orgEl && orgEl.value || '').trim();
+            const pass = (passEl && passEl.value || '').trim();
+            if (!org || !pass) { showMsg('Preencha Org e Senha'); return; }
+            cloudConnect(org, pass);
+          }
+          if (action === 'cloudDisconnect') {
+            cloudDisconnect();
+          }
+          if (action === 'exportBackup') exportBackup();
+          if (action === 'pickImport') {
+            const inp = document.getElementById('import-file-input');
+            if (inp) inp.click();
+          }
+          if (action === 'deleteEntry') deleteEntry(el.getAttribute('data-id'));
+          if (action === 'prevWeek') prevWeek();
+          if (action === 'nextWeek') nextWeek();
+          if (action === 'emailReport') emailReport();
+          if (action === 'copyReport') {
+            const text = getReportText();
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(function () { showMsg('Relatório copiado'); }).catch(function () { showMsg('Não foi possível copiar'); });
+            } else {
+              showMsg('Não foi possível copiar');
+            }
+          }
+        });
+      });
+    }
+
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+      });
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
