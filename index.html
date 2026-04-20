@@ -325,6 +325,7 @@
       try {
         localStorage.setItem(key, typeof data === 'string' ? data : JSON.stringify(data));
       } catch (e) { console.error(e); }
+      if (state.cloudConnected) cloudNeedsPush = true;
       queueCloudPush();
     }
 
@@ -367,11 +368,16 @@
     let cloudOnVisible = null;
     let cloudOnFocus = null;
     let cloudLastSoftPushWarn = 0;
+    /** True após save com cloud ligado; só volta a false quando um POST tiver sucesso e não houver outro push pendente no timer. */
+    let cloudNeedsPush = false;
 
     function queueCloudPush() {
       if (!state.cloudConnected) return;
       if (cloudPushTimer) clearTimeout(cloudPushTimer);
-      cloudPushTimer = setTimeout(function () { cloudDoPush(); }, 800);
+      cloudPushTimer = setTimeout(function () {
+        cloudPushTimer = null;
+        cloudDoPush();
+      }, 800);
     }
 
     function scheduleCloudPushRetry() {
@@ -423,10 +429,12 @@
           clearTimeout(cloudRetryTimer);
           cloudRetryTimer = null;
         }
+        if (!cloudPushTimer) cloudNeedsPush = false;
       } catch (e) {
         console.error(e);
         var st = cloudHttpStatus(e);
         if (st === 401) {
+          cloudNeedsPush = false;
           showMsg('Senha ou org incorretos.');
           state.cloudConnected = false;
           clearCloudSyncUiListeners();
@@ -472,6 +480,10 @@
         if (!org || !pass) return;
         await flushPendingCloudPush();
         if (!state.cloudConnected) return;
+        if (cloudNeedsPush) {
+          render();
+          return;
+        }
         const snap = await cloudFetchSnapshot(org, pass);
         if (snap && snap.payload) {
           applySnapshot(snap.payload);
@@ -485,6 +497,7 @@
         console.error(e);
         var pst = cloudHttpStatus(e);
         if (pst === 401) {
+          cloudNeedsPush = false;
           state.cloudConnected = false;
           sessionStorage.removeItem('fortifyCloudPasscode');
           clearCloudSyncUiListeners();
@@ -527,6 +540,7 @@
         };
         document.addEventListener('visibilitychange', cloudOnVisible);
         window.addEventListener('focus', cloudOnFocus);
+        cloudNeedsPush = false;
       } catch (e) {
         console.error(e);
         state.cloudConnected = false;
@@ -536,6 +550,7 @@
     }
 
     function cloudDisconnect() {
+      cloudNeedsPush = false;
       state.cloudConnected = false;
       sessionStorage.removeItem('fortifyCloudPasscode');
       if (cloudPollTimer) {
