@@ -183,6 +183,20 @@
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    /** Arredonda para o slot de 30 min (6h–20h) usado nos selects. */
+    function slotFromIso(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      var mins = d.getHours() * 60 + d.getMinutes();
+      var rounded = Math.round(mins / 30) * 30;
+      var lo = 6 * 60;
+      var hi = 20 * 60;
+      var c = Math.max(lo, Math.min(hi, rounded));
+      var h = Math.floor(c / 60);
+      var m = c % 60;
+      return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    }
+
     function buildWorkdaySlotsHtml(selectedValue, withBlank) {
       let html = '';
       if (withBlank) {
@@ -254,6 +268,7 @@
       clockOutSlot: defaultSlotNow(),
       lunchStartSlot: '',
       lunchEndSlot: '',
+      editEntryId: '',
     };
 
     function getLocalSnapshot() {
@@ -811,7 +826,11 @@ let msgTimer;
       return text;
     }
 
-    function setView(v) { state.view = v; render(); }
+    function setView(v) {
+      state.view = v;
+      if (v !== VIEWS.TIMESHEET) state.editEntryId = '';
+      render();
+    }
 
     function addEmployee() {
       if (!state.newEmpName.trim() || !state.newEmpRate) return;
@@ -856,17 +875,6 @@ let msgTimer;
       const active = state.entries.find(function (e) { return e.employeeId === state.selectedEmp && !e.clockOut; });
       if (active) { showMsg('Esta pessoa ainda está com ponto aberto (sem saída).'); return; }
       const clockInIso = combineDateTimeLocal(state.workDate, state.clockInSlot);
-      const dayKey = localDateKeyFromIso(clockInIso);
-      const jaTemNesteDiaNestaObra = state.entries.some(function (e) {
-        if (e.employeeId !== state.selectedEmp) return false;
-        if (String(e.siteId) !== String(state.selectedSite)) return false;
-        const d = e.date || localDateKeyFromIso(e.clockIn);
-        return d === dayKey;
-      });
-      if (jaTemNesteDiaNestaObra) {
-        showMsg('Já existe ponto neste dia para esta pessoa nesta obra. Use outra obra, outro dia, ou finalize o registro anterior.');
-        return;
-      }
       let lunchStartIso = null;
       let lunchEndIso = null;
       if (state.lunchStartSlot && state.lunchEndSlot) {
@@ -997,8 +1005,99 @@ let msgTimer;
       render();
     }
     function deleteEntry(entryId) {
+      if (state.editEntryId === entryId) state.editEntryId = '';
       state.entries = state.entries.filter(function (e) { return e.id !== entryId; });
       save(STORAGE_KEYS.entries, state.entries);
+      render();
+    }
+
+    function buildEntryEditFormHtml(entry) {
+      const wd = entry.date || localDateKeyFromIso(entry.clockIn);
+      const inSl = slotFromIso(entry.clockIn);
+      const outSl = entry.clockOut ? slotFromIso(entry.clockOut) : '';
+      const ls = entry.lunchStart ? slotFromIso(entry.lunchStart) : '';
+      const le = entry.lunchEnd ? slotFromIso(entry.lunchEnd) : '';
+      let siteOpts = '';
+      state.sites.forEach(function (site) {
+        siteOpts += '<option value="' + escapeHtml(site.id) + '"' + (String(entry.siteId) === String(site.id) ? ' selected' : '') + '>' + escapeHtml(site.name) + '</option>';
+      });
+      const open = !entry.clockOut;
+      return '<div class="card-highlight" data-entry-edit="' + escapeHtml(entry.id) + '" style="border-color:#F26A21">' +
+        '<div class="label">Corrigir registro</div>' +
+        '<p class="hint" style="margin-top:0">Altere data, obra ou horários — inclui dias em branco ou erros. Pode deixar saída em branco só se o ponto ainda estiver aberto.</p>' +
+        '<div class="label">Data do trabalho</div>' +
+        '<input type="date" class="input" data-edit-date value="' + escapeHtml(wd) + '" />' +
+        '<div class="label">Obra</div>' +
+        '<select class="select" data-edit-site>' + siteOpts + '</select>' +
+        '<div class="label">Entrada</div>' +
+        '<select class="select" data-edit-in>' + buildWorkdaySlotsHtml(inSl) + '</select>' +
+        '<div class="label">Saída</div>' +
+        '<select class="select" data-edit-out>' + buildWorkdaySlotsHtml(outSl, open) + '</select>' +
+        '<div class="label" style="margin-top:8px;font-size:10px">Almoço (opcional)</div>' +
+        '<select class="select" data-edit-ls>' + buildWorkdaySlotsHtml(ls, true) + '</select>' +
+        '<select class="select" data-edit-le>' + buildWorkdaySlotsHtml(le, true) + '</select>' +
+        '<div class="btn-row" style="margin-top:12px">' +
+        '<button type="button" class="btn-primary" data-action="saveEditEntry" data-id="' + escapeHtml(entry.id) + '">Guardar</button>' +
+        '<button type="button" class="btn-secondary" data-action="cancelEditEntry">Cancelar</button></div></div>';
+    }
+
+    function commitEntryPatch(entryId, patch) {
+      const entry = state.entries.find(function (e) { return e.id === entryId; });
+      if (!entry) return;
+      var wd = patch.workDate;
+      if (!wd || !patch.inSlot) {
+        showMsg('Data e hora de entrada são obrigatórias.');
+        return;
+      }
+      if (!patch.siteId) {
+        showMsg('Selecione a obra.');
+        return;
+      }
+      var clockInIso = combineDateTimeLocal(wd, patch.inSlot);
+      var lunchStartIso = null;
+      var lunchEndIso = null;
+      if (patch.lunchStartSlot && patch.lunchEndSlot) {
+        lunchStartIso = combineDateTimeLocal(wd, patch.lunchStartSlot);
+        lunchEndIso = combineDateTimeLocal(wd, patch.lunchEndSlot);
+        if (new Date(lunchEndIso).getTime() <= new Date(lunchStartIso).getTime()) {
+          showMsg('Almoço: hora de fim deve ser depois da hora de início.');
+          return;
+        }
+        if (new Date(lunchStartIso).getTime() < new Date(clockInIso).getTime()) {
+          showMsg('Almoço: início não pode ser antes da entrada.');
+          return;
+        }
+      } else if (patch.lunchStartSlot || patch.lunchEndSlot) {
+        showMsg('Almoço: preencha início e fim, ou deixe os dois em branco.');
+        return;
+      }
+      var clockOutIso = patch.outSlot ? combineDateTimeLocal(wd, patch.outSlot) : null;
+      if (entry.clockOut && !clockOutIso) {
+        showMsg('Defina a hora de saída (este registro já estava fechado).');
+        return;
+      }
+      if (clockOutIso && new Date(clockOutIso).getTime() <= new Date(clockInIso).getTime()) {
+        showMsg('Saída deve ser depois da entrada.');
+        return;
+      }
+      if (clockOutIso && lunchStartIso && lunchEndIso) {
+        if (new Date(lunchEndIso).getTime() > new Date(clockOutIso).getTime()) {
+          showMsg('Almoço não pode terminar depois da hora de saída.');
+          return;
+        }
+      }
+      var updated = Object.assign({}, entry, {
+        siteId: patch.siteId,
+        clockIn: clockInIso,
+        clockOut: clockOutIso,
+        date: wd,
+        lunchStart: lunchStartIso,
+        lunchEnd: lunchEndIso,
+      });
+      state.entries = state.entries.map(function (e) { return e.id === entryId ? updated : e; });
+      state.editEntryId = '';
+      save(STORAGE_KEYS.entries, state.entries);
+      showMsg('Registro atualizado');
       render();
     }
     function saveEmail(ev) {
@@ -1007,12 +1106,14 @@ let msgTimer;
       showMsg('Email saved');
     }
     function prevWeek() {
+      state.editEntryId = '';
       const d = new Date(state.selectedWeek);
       d.setDate(d.getDate() - 7);
       state.selectedWeek = d.toISOString();
       render();
     }
     function nextWeek() {
+      state.editEntryId = '';
       const d = new Date(state.selectedWeek);
       d.setDate(d.getDate() + 7);
       state.selectedWeek = d.toISOString();
@@ -1152,7 +1253,7 @@ let msgTimer;
           const activeEntry = selActive ? state.entries.find(function (e) { return e.employeeId === state.selectedEmp && !e.clockOut; }) : null;
           const clockInBlock =
             '<div class="subhead">Entrada</div>' +
-            '<p class="hint">Uma data para o dia todo. Horários de 6h a 20h, a cada 30 min.</p>' +
+            '<p class="hint">Use <strong>qualquer data</strong> (passado ou hoje) para lançar dias em falta ou retroativo. Horários 6h–20h, a cada 30 min. Para corrigir um dia já lançado, use a aba <strong>Hours</strong> → Corrigir.</p>' +
             '<div class="label">Data do trabalho</div>' +
             '<input type="date" class="input" data-bind="workDate" value="' + escapeHtml(state.workDate) + '" />' +
             '<div class="label">Hora de entrada</div>' +
@@ -1195,6 +1296,7 @@ let msgTimer;
             '<div class="label">Obra (cada registro fica ligado a esta obra)</div>' +
             '<p class="hint" style="margin-top:0">Vários funcionários podem estar em obras diferentes; cada entrada escolhe uma obra.</p>' +
             '<select class="select" data-bind="selectedSite">' + siteOpts + '</select>' +
+            '<p class="hint" style="margin-top:8px">Pode haver mais de um registo no mesmo dia (ex.: manhã e tarde na mesma obra); evite duplicar por engano.</p>' +
             clockInBlock + clockOutBlock + '</div>' + activeBlock + '</div>';
         }
       }
@@ -1204,10 +1306,15 @@ let msgTimer;
         if (weekList.length === 0) {
           main = '<div class="page"><div class="page-title">Timesheet</div>' +
             '<div class="week-nav"><button type="button" data-action="prevWeek">← Prev</button><div class="week-label">' + escapeHtml(getWeekLabel(state.selectedWeek)) + '</div><button type="button" data-action="nextWeek">Next →</button></div>' +
-            '<div class="empty-state"><div style="color:#555">No entries this week</div></div></div>';
+            '<div class="empty-state"><div style="color:#555">Sem registos nesta semana</div>' +
+            '<p class="hint" style="margin-top:12px;text-align:center">Para lançar um dia em falta: vá a <strong>Ponto</strong>, escolha a <strong>data</strong> desse dia e faça entrada/saída.</p></div></div>';
         } else {
           let rows = '';
           weekList.slice().sort(function (a, b) { return new Date(b.clockIn) - new Date(a.clockIn); }).forEach(function (entry) {
+            if (state.editEntryId === entry.id) {
+              rows += buildEntryEditFormHtml(entry);
+              return;
+            }
             const emp = state.employees.find(function (e) { return e.id === entry.employeeId; });
             const site = state.sites.find(function (s) { return s.id === entry.siteId; });
             const hours = entry.clockOut ? entryWorkedHours(entry) : null;
@@ -1229,7 +1336,8 @@ let msgTimer;
                 : '') +
               '</div>' +
               '<div class="text-right">' + hoursBlock + badge +
-              '<button type="button" class="btn-danger tiny" data-action="deleteEntry" data-id="' + escapeHtml(entry.id) + '">Delete</button></div></div></div>';
+              '<button type="button" class="btn-secondary tiny" style="margin-top:6px;width:100%" data-action="startEditEntry" data-id="' + escapeHtml(entry.id) + '">Corrigir</button>' +
+              '<button type="button" class="btn-danger tiny" style="margin-top:6px" data-action="deleteEntry" data-id="' + escapeHtml(entry.id) + '">Apagar</button></div></div></div>';
           });
           main = '<div class="page"><div class="page-title">Timesheet</div>' +
             '<div class="week-nav"><button type="button" data-action="prevWeek">← Prev</button><div class="week-label">' + escapeHtml(getWeekLabel(state.selectedWeek)) + '</div><button type="button" data-action="nextWeek">Next →</button></div>' + rows + '</div>';
@@ -1428,6 +1536,34 @@ let msgTimer;
             if (inp) inp.click();
           }
           if (action === 'deleteEntry') deleteEntry(el.getAttribute('data-id'));
+          if (action === 'startEditEntry') {
+            state.editEntryId = el.getAttribute('data-id') || '';
+            render();
+          }
+          if (action === 'cancelEditEntry') {
+            state.editEntryId = '';
+            render();
+          }
+          if (action === 'saveEditEntry') {
+            const eid = el.getAttribute('data-id');
+            if (!eid) return;
+            const wrap = root.querySelector('[data-entry-edit="' + eid + '"]');
+            if (!wrap) return;
+            const dateEl = wrap.querySelector('[data-edit-date]');
+            const siteEl = wrap.querySelector('[data-edit-site]');
+            const inEl = wrap.querySelector('[data-edit-in]');
+            const outEl = wrap.querySelector('[data-edit-out]');
+            const lsEl = wrap.querySelector('[data-edit-ls]');
+            const leEl = wrap.querySelector('[data-edit-le]');
+            commitEntryPatch(eid, {
+              workDate: dateEl && dateEl.value,
+              siteId: siteEl && siteEl.value,
+              inSlot: inEl && inEl.value,
+              outSlot: outEl && outEl.value,
+              lunchStartSlot: lsEl && lsEl.value,
+              lunchEndSlot: leEl && leEl.value,
+            });
+          }
           if (action === 'prevWeek') prevWeek();
           if (action === 'nextWeek') nextWeek();
           if (action === 'emailReport') emailReport();
