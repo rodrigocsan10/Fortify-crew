@@ -1,5 +1,6 @@
 /* Fortify — cache mínimo para funcionar offline depois do 1º carregamento */
-var CACHE = 'fortify-crew-v1';
+/* Bump CACHE quando mudar index/manifest para clientes largarem HTML antigo em cache. */
+var CACHE = 'fortify-crew-v2';
 var PRECACHE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
@@ -12,7 +13,15 @@ self.addEventListener('install', function (e) {
 });
 
 self.addEventListener('activate', function (e) {
-  e.waitUntil(self.clients.claim());
+  e.waitUntil(
+    caches.keys().then(function (keys) {
+      return Promise.all(
+        keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); })
+      );
+    }).then(function () {
+      return self.clients.claim();
+    })
+  );
 });
 
 self.addEventListener('fetch', function (e) {
